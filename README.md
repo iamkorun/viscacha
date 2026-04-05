@@ -13,6 +13,8 @@
 
 ---
 
+<!-- TODO: Add demo GIF -->
+
 ## The Problem
 
 You clone a repo. You run `npm install`. It fails. Why? The project needs Node 20 but you have Node 18. You check `.nvmrc` — sure enough. You switch. Now `cargo build` fails. The project pins Rust 1.76 in `rust-toolchain.toml` but you're on 1.80. You spend 15 minutes hunting down version files scattered across the project before you can actually start working.
@@ -172,6 +174,7 @@ viscacha understands these constraint formats (commonly found in `package.json` 
 | `--dir <PATH>` | `-d` | Directory to scan (defaults to current directory) |
 | `--fix` | | Show suggested fix commands for mismatches |
 | `--quiet` | `-q` | Exit code only, no output (useful for CI) |
+| `--verbose` | `-v` | Show which version files were detected |
 | `--help` | `-h` | Show help text |
 | `--version` | `-V` | Show version |
 
