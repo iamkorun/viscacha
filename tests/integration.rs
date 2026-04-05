@@ -245,5 +245,5 @@ fn help_flag_works() {
         .arg("--help")
         .assert()
         .success()
-        .stdout(predicate::str::contains("toolchain version checker"));
+        .stdout(predicate::str::contains("viscacha scans your project"));
 }
