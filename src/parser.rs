@@ -270,4 +270,56 @@ mod tests {
         let reqs = parse_version_file(Path::new("/tmp/does-not-exist/.nvmrc"));
         assert!(reqs.is_empty());
     }
+
+    #[test]
+    fn parse_nvmrc_only_v_prefix() {
+        let reqs = write_and_parse(".nvmrc", "v\n");
+        assert!(reqs.is_empty());
+    }
+
+    #[test]
+    fn parse_tool_versions_go_alias() {
+        let content = "go 1.22.0\n";
+        let reqs = write_and_parse(".tool-versions", content);
+        assert_eq!(reqs.len(), 1);
+        assert_eq!(reqs[0].tool, "go");
+    }
+
+    #[test]
+    fn parse_tool_versions_empty() {
+        let reqs = write_and_parse(".tool-versions", "");
+        assert!(reqs.is_empty());
+    }
+
+    #[test]
+    fn parse_tool_versions_only_comments() {
+        let reqs = write_and_parse(".tool-versions", "# just a comment\n# another\n");
+        assert!(reqs.is_empty());
+    }
+
+    #[test]
+    fn parse_malformed_toml() {
+        let reqs = write_and_parse("rust-toolchain.toml", "not valid toml {{{");
+        assert!(reqs.is_empty());
+    }
+
+    #[test]
+    fn parse_malformed_json() {
+        let reqs = write_and_parse("package.json", "{invalid json}");
+        assert!(reqs.is_empty());
+    }
+
+    #[test]
+    fn parse_rust_toolchain_toml_no_channel() {
+        let content = "[toolchain]\ncomponents = [\"clippy\"]\n";
+        let reqs = write_and_parse("rust-toolchain.toml", content);
+        assert!(reqs.is_empty());
+    }
+
+    #[test]
+    fn parse_go_mod_no_go_directive() {
+        let content = "module example.com/foo\n\nrequire golang.org/x/text v0.14.0\n";
+        let reqs = write_and_parse("go.mod", content);
+        assert!(reqs.is_empty());
+    }
 }

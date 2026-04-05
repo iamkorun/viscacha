@@ -118,6 +118,16 @@ fn version_matches(required: &str, installed: &str) -> bool {
     let req = required.trim();
     let inst = installed.trim();
 
+    // Handle OR ranges first
+    if req.contains("||") {
+        return req.split("||").any(|part| version_matches(part.trim(), inst));
+    }
+    // Handle ">=X <Y" style compound ranges (space separated, multiple constraints)
+    let parts: Vec<&str> = req.split_whitespace().collect();
+    if parts.len() > 1 {
+        return parts.iter().all(|p| version_matches(p, inst));
+    }
+
     // Handle range operators from package.json engines
     if req.starts_with(">=") {
         return match_gte(req.trim_start_matches(">=").trim(), inst);
@@ -136,14 +146,6 @@ fn version_matches(required: &str, installed: &str) -> bool {
     }
     if req.starts_with('^') {
         return match_caret(req.trim_start_matches('^').trim(), inst);
-    }
-    if req.contains("||") {
-        return req.split("||").any(|part| version_matches(part.trim(), inst));
-    }
-    // Handle ">=X <Y" style compound ranges (space separated)
-    if req.contains(">=") && req.contains('<') && !req.contains("||") {
-        let parts: Vec<&str> = req.split_whitespace().collect();
-        return parts.iter().all(|p| version_matches(p, inst));
     }
 
     // Exact or prefix match
@@ -404,5 +406,65 @@ mod tests {
     fn compare_versions_different_lengths() {
         assert_eq!(compare_versions("20", "20.0.0"), std::cmp::Ordering::Equal);
         assert_eq!(compare_versions("20.1", "20.0.0"), std::cmp::Ordering::Greater);
+    }
+
+    #[test]
+    fn version_matches_compound_range() {
+        // ">=18 <22" style from package.json
+        assert!(version_matches(">=18 <22", "20.0.0"));
+        assert!(version_matches(">=18 <22", "18.0.0"));
+        assert!(!version_matches(">=18 <22", "22.0.0"));
+        assert!(!version_matches(">=18 <22", "16.0.0"));
+    }
+
+    #[test]
+    fn version_matches_prerelease_suffix() {
+        // Pre-release versions: numeric part should still match
+        assert!(version_matches("1.76", "1.76.0-nightly"));
+    }
+
+    #[test]
+    fn version_matches_star_wildcard() {
+        assert!(version_matches("3.*", "3.11.4"));
+        assert!(!version_matches("3.*", "4.0.0"));
+    }
+
+    #[test]
+    fn fix_command_python() {
+        let r = CheckResult {
+            tool: "python".to_string(),
+            required: "3.11".to_string(),
+            installed: Some("3.10.0".to_string()),
+            status: CheckStatus::Fail,
+            source: ".python-version".to_string(),
+        };
+        assert_eq!(
+            r.fix_command(),
+            Some("pyenv install 3.11 && pyenv local 3.11".to_string())
+        );
+    }
+
+    #[test]
+    fn fix_command_go() {
+        let r = CheckResult {
+            tool: "go".to_string(),
+            required: "1.22.0".to_string(),
+            installed: Some("1.21.0".to_string()),
+            status: CheckStatus::Fail,
+            source: "go.mod".to_string(),
+        };
+        assert!(r.fix_command().unwrap().contains("go install"));
+    }
+
+    #[test]
+    fn fix_command_unknown_tool() {
+        let r = CheckResult {
+            tool: "ruby".to_string(),
+            required: "3.2".to_string(),
+            installed: None,
+            status: CheckStatus::NotInstalled,
+            source: ".ruby-version".to_string(),
+        };
+        assert!(r.fix_command().is_none());
     }
 }

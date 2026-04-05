@@ -184,6 +184,62 @@ fn version_flag_works() {
 }
 
 #[test]
+fn nonexistent_dir_exits_gracefully() {
+    viscacha()
+        .arg("--dir")
+        .arg("/tmp/viscacha-nonexistent-dir-12345")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("No version constraint files found"));
+}
+
+#[test]
+fn duplicate_tool_from_multiple_files() {
+    let tmp = TempDir::new().unwrap();
+    // Both .nvmrc and package.json define node
+    fs::write(tmp.path().join(".nvmrc"), "999.0.0").unwrap();
+    fs::write(
+        tmp.path().join("package.json"),
+        r#"{"name":"test","engines":{"node":">=999"}}"#,
+    )
+    .unwrap();
+
+    viscacha()
+        .arg("--dir")
+        .arg(tmp.path())
+        .assert()
+        // Should show both entries (one from each source)
+        .stdout(predicate::str::contains(".nvmrc"))
+        .stdout(predicate::str::contains("package.json"));
+}
+
+#[test]
+fn malformed_toml_does_not_crash() {
+    let tmp = TempDir::new().unwrap();
+    fs::write(tmp.path().join("rust-toolchain.toml"), "{{{invalid toml").unwrap();
+
+    viscacha()
+        .arg("--dir")
+        .arg(tmp.path())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("No version constraint files found"));
+}
+
+#[test]
+fn malformed_json_does_not_crash() {
+    let tmp = TempDir::new().unwrap();
+    fs::write(tmp.path().join("package.json"), "not json at all").unwrap();
+
+    viscacha()
+        .arg("--dir")
+        .arg(tmp.path())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("No version constraint files found"));
+}
+
+#[test]
 fn help_flag_works() {
     viscacha()
         .arg("--help")
