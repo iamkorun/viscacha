@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>viscacha — Toolchain version checker</title>
+  <meta name="description" content="Check your toolchain versions match what the project expects. One command to verify Node, Python, Rust, Go, and npm versions across ecosystems.">
+  <meta name="keywords" content="toolchain, version checker, CLI, Rust, Node.js, Python, Go, developer tools">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="viscacha — Toolchain version checker">
+  <meta property="og:description" content="One command to verify your toolchain versions match what the project expects.">
+  <meta property="og:url" content="https://iamkorun.github.io/viscacha">
+  <meta property="og:image" content="https://iamkorun.github.io/viscacha/og-image.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="viscacha — Toolchain version checker">
+  <meta name="twitter:description" content="One command to verify your toolchain versions match what the project expects.">
+  <meta name="twitter:image" content="https://iamkorun.github.io/viscacha/og-image.png">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
+          },
+          colors: {
+            surface: {
+              900: '#0a0a0f',
+              800: '#12121a',
+              700: '#1a1a25',
+              600: '#252533',
+            },
+            accent: {
+              DEFAULT: '#a78bfa',
+              light: '#c4b5fd',
+              dim: '#7c3aed',
+            },
+            pass: '#4ade80',
+            fail: '#f87171',
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    body { background: #0a0a0f; }
+
+    /* Scroll-triggered fade in */
+    .fade-in {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+    .fade-in.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Terminal styling */
+    .terminal {
+      background: #12121a;
+      border: 1px solid #252533;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .terminal-bar {
+      background: #1a1a25;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .terminal-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    /* Copy button animation */
+    .copy-btn {
+      transition: all 0.2s ease;
+    }
+    .copy-btn:hover {
+      background: rgba(167, 139, 250, 0.15);
+    }
+    .copy-btn.copied {
+      color: #4ade80;
+    }
+
+    /* Tab styling */
+    .tab-btn {
+      transition: all 0.2s ease;
+      border-bottom: 2px solid transparent;
+    }
+    .tab-btn.active {
+      border-bottom-color: #a78bfa;
+      color: #a78bfa;
+    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Glow effect on hero */
+    .glow {
+      position: absolute;
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(124, 58, 237, 0.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body class="font-sans text-gray-300 antialiased">
+
+  <!-- Nav -->
+  <nav class="fixed top-0 w-full z-50 bg-surface-900/80 backdrop-blur-md border-b border-surface-600/50">
+    <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+      <a href="#" class="text-white font-semibold text-lg tracking-tight">viscacha</a>
+      <div class="flex items-center gap-6">
+        <a href="#features" class="text-sm text-gray-400 hover:text-white transition-colors hidden sm:block">Features</a>
+        <a href="#demo" class="text-sm text-gray-400 hover:text-white transition-colors hidden sm:block">Demo</a>
+        <a href="#install" class="text-sm text-gray-400 hover:text-white transition-colors hidden sm:block">Install</a>
+        <a href="https://github.com/iamkorun/viscacha" class="text-sm text-gray-400 hover:text-white transition-colors flex items-center gap-1.5">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          GitHub
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
+    <div class="glow top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2"></div>
+    <div class="max-w-3xl mx-auto px-6 text-center relative z-10">
+      <div class="text-6xl mb-6">🐭</div>
+      <h1 class="text-4xl sm:text-5xl md:text-6xl font-bold text-white tracking-tight leading-tight mb-6">
+        viscacha
+      </h1>
+      <p class="text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto mb-10 leading-relaxed">
+        Check your toolchain versions match what the project expects.
+        Node, Python, Rust, Go — one command, one table, zero guessing.
+      </p>
+
+      <!-- Install command with copy -->
+      <div class="inline-flex items-center bg-surface-800 border border-surface-600 rounded-lg px-5 py-3 gap-3 group">
+        <code class="font-mono text-sm sm:text-base text-accent-light">cargo install viscacha</code>
+        <button onclick="copyInstall(this)" class="copy-btn text-gray-500 hover:text-accent p-1 rounded" title="Copy to clipboard">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+        </button>
+      </div>
+
+      <div class="mt-8 flex items-center justify-center gap-4">
+        <a href="https://github.com/iamkorun/viscacha" class="inline-flex items-center gap-2 bg-accent-dim hover:bg-accent text-white font-medium px-6 py-2.5 rounded-lg transition-colors text-sm">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          Star on GitHub
+        </a>
+        <a href="#demo" class="text-sm text-gray-400 hover:text-white transition-colors underline underline-offset-4">
+          See it in action
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Demo -->
+  <section id="demo" class="py-24 px-6">
+    <div class="max-w-4xl mx-auto fade-in">
+      <h2 class="text-3xl font-bold text-white text-center mb-4">One command. Full picture.</h2>
+      <p class="text-gray-400 text-center mb-12 max-w-xl mx-auto">Run <code class="font-mono text-accent bg-surface-700 px-1.5 py-0.5 rounded text-sm">viscacha</code> in any project directory. It finds version files, checks your installed tools, and tells you what matches and what doesn't.</p>
+
+      <div class="terminal max-w-2xl mx-auto">
+        <div class="terminal-bar">
+          <div class="terminal-dot bg-red-500/80"></div>
+          <div class="terminal-dot bg-yellow-500/80"></div>
+          <div class="terminal-dot bg-green-500/80"></div>
+          <span class="ml-2 text-xs text-gray-500 font-mono">~/my-project</span>
+        </div>
+        <div class="p-6 font-mono text-sm leading-relaxed">
+          <p class="text-gray-500">$ viscacha --fix</p>
+          <br>
+          <p class="text-gray-400"> Tool    Required  Installed  Source               Status</p>
+          <p class="text-gray-600"> ──────────────────────────────────────────────────────────</p>
+          <p class="text-pass"> node    20        20.11.0    .nvmrc               &#10003;</p>
+          <p class="text-pass"> python  3.11      3.11.4     .python-version      &#10003;</p>
+          <p class="text-fail"> rust    1.76.0    1.80.0     rust-toolchain.toml  &#10007;</p>
+          <p class="text-pass"> go      1.22.0    1.22.0     go.mod               &#10003;</p>
+          <p class="text-pass"> node    >=18      20.11.0    package.json         &#10003;</p>
+          <p class="text-pass"> npm     >=9       10.2.4     package.json         &#10003;</p>
+          <br>
+          <p class="text-white font-medium">Suggested fixes:</p>
+          <p class="text-gray-400">  <span class="text-white font-medium">rust:</span> <span class="text-cyan-400">rustup toolchain install 1.76.0 && rustup override set 1.76.0</span></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section id="features" class="py-24 px-6 bg-surface-800/30">
+    <div class="max-w-6xl mx-auto">
+      <h2 class="text-3xl font-bold text-white text-center mb-4 fade-in">Features</h2>
+      <p class="text-gray-400 text-center mb-16 max-w-lg mx-auto fade-in">Everything you need to keep your toolchain in sync.</p>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="fade-in bg-surface-700/50 border border-surface-600/50 rounded-xl p-6 hover:border-accent-dim/50 transition-colors">
+          <div class="text-2xl mb-3">🔍</div>
+          <h3 class="text-white font-semibold mb-2">Multi-Ecosystem</h3>
+          <p class="text-gray-400 text-sm leading-relaxed">Node.js, Python, Rust, Go, and npm. Reads 8 different version file formats in one scan.</p>
+        </div>
+        <div class="fade-in bg-surface-700/50 border border-surface-600/50 rounded-xl p-6 hover:border-accent-dim/50 transition-colors">
+          <div class="text-2xl mb-3">🔧</div>
+          <h3 class="text-white font-semibold mb-2">Fix Suggestions</h3>
+          <p class="text-gray-400 text-sm leading-relaxed">The <code class="text-accent text-xs">--fix</code> flag prints the exact commands to resolve every mismatch.</p>
+        </div>
+        <div class="fade-in bg-surface-700/50 border border-surface-600/50 rounded-xl p-6 hover:border-accent-dim/50 transition-colors">
+          <div class="text-2xl mb-3">🤖</div>
+          <h3 class="text-white font-semibold mb-2">CI-Ready</h3>
+          <p class="text-gray-400 text-sm leading-relaxed">Quiet mode returns exit codes only. Drop it into GitHub Actions and catch mismatches before builds fail.</p>
+        </div>
+        <div class="fade-in bg-surface-700/50 border border-surface-600/50 rounded-xl p-6 hover:border-accent-dim/50 transition-colors">
+          <div class="text-2xl mb-3">⚡</div>
+          <h3 class="text-white font-semibold mb-2">Fast & Portable</h3>
+          <p class="text-gray-400 text-sm leading-relaxed">Written in Rust. Single binary, no runtime. Scans and checks in milliseconds.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Supported Files -->
+  <section class="py-24 px-6">
+    <div class="max-w-4xl mx-auto fade-in">
+      <h2 class="text-3xl font-bold text-white text-center mb-12">Supported Files</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm">
+          <thead>
+            <tr class="border-b border-surface-600">
+              <th class="py-3 px-4 text-gray-400 font-medium">File</th>
+              <th class="py-3 px-4 text-gray-400 font-medium">Ecosystem</th>
+              <th class="py-3 px-4 text-gray-400 font-medium">What it reads</th>
+            </tr>
+          </thead>
+          <tbody class="font-mono text-xs sm:text-sm">
+            <tr class="border-b border-surface-700/50"><td class="py-3 px-4 text-accent">.nvmrc</td><td class="py-3 px-4">Node.js</td><td class="py-3 px-4 text-gray-400">Node version</td></tr>
+            <tr class="border-b border-surface-700/50"><td class="py-3 px-4 text-accent">.node-version</td><td class="py-3 px-4">Node.js</td><td class="py-3 px-4 text-gray-400">Node version</td></tr>
+            <tr class="border-b border-surface-700/50"><td class="py-3 px-4 text-accent">.tool-versions</td><td class="py-3 px-4">asdf / mise</td><td class="py-3 px-4 text-gray-400">nodejs, python, rust, golang</td></tr>
+            <tr class="border-b border-surface-700/50"><td class="py-3 px-4 text-accent">rust-toolchain.toml</td><td class="py-3 px-4">Rust</td><td class="py-3 px-4 text-gray-400">[toolchain] channel</td></tr>
+            <tr class="border-b border-surface-700/50"><td class="py-3 px-4 text-accent">rust-toolchain</td><td class="py-3 px-4">Rust</td><td class="py-3 px-4 text-gray-400">Plain version string</td></tr>
+            <tr class="border-b border-surface-700/50"><td class="py-3 px-4 text-accent">.python-version</td><td class="py-3 px-4">Python</td><td class="py-3 px-4 text-gray-400">Python version</td></tr>
+            <tr class="border-b border-surface-700/50"><td class="py-3 px-4 text-accent">go.mod</td><td class="py-3 px-4">Go</td><td class="py-3 px-4 text-gray-400">go directive</td></tr>
+            <tr><td class="py-3 px-4 text-accent">package.json</td><td class="py-3 px-4">Node.js / npm</td><td class="py-3 px-4 text-gray-400">engines.node, engines.npm</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Install -->
+  <section id="install" class="py-24 px-6 bg-surface-800/30">
+    <div class="max-w-3xl mx-auto fade-in">
+      <h2 class="text-3xl font-bold text-white text-center mb-12">Install</h2>
+
+      <div class="flex justify-center gap-1 mb-8">
+        <button onclick="switchTab('cargo')" class="tab-btn active px-5 py-2 text-sm text-gray-400 rounded-t-lg">cargo</button>
+        <button onclick="switchTab('source')" class="tab-btn px-5 py-2 text-sm text-gray-400 rounded-t-lg">from source</button>
+        <button onclick="switchTab('binary')" class="tab-btn px-5 py-2 text-sm text-gray-400 rounded-t-lg">binary</button>
+      </div>
+
+      <div id="tab-cargo" class="tab-content active">
+        <div class="terminal max-w-lg mx-auto">
+          <div class="terminal-bar">
+            <div class="terminal-dot bg-red-500/80"></div>
+            <div class="terminal-dot bg-yellow-500/80"></div>
+            <div class="terminal-dot bg-green-500/80"></div>
+          </div>
+          <div class="p-5 font-mono text-sm flex items-center justify-between">
+            <span><span class="text-gray-500">$</span> cargo install viscacha</span>
+            <button onclick="copyText(this, 'cargo install viscacha')" class="copy-btn text-gray-500 p-1 rounded">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-source" class="tab-content">
+        <div class="terminal max-w-lg mx-auto">
+          <div class="terminal-bar">
+            <div class="terminal-dot bg-red-500/80"></div>
+            <div class="terminal-dot bg-yellow-500/80"></div>
+            <div class="terminal-dot bg-green-500/80"></div>
+          </div>
+          <div class="p-5 font-mono text-sm space-y-1">
+            <p><span class="text-gray-500">$</span> git clone https://github.com/iamkorun/viscacha.git</p>
+            <p><span class="text-gray-500">$</span> cd viscacha</p>
+            <p><span class="text-gray-500">$</span> cargo install --path .</p>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-binary" class="tab-content">
+        <div class="bg-surface-700/50 border border-surface-600/50 rounded-xl p-6 max-w-lg mx-auto text-center">
+          <p class="text-gray-400 text-sm">Pre-built binaries for Linux, macOS, and Windows are available on the</p>
+          <a href="https://github.com/iamkorun/viscacha/releases" class="text-accent hover:text-accent-light transition-colors font-medium">GitHub Releases page</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="py-16 px-6 border-t border-surface-600/50">
+    <div class="max-w-4xl mx-auto text-center">
+      <p class="text-2xl mb-2">🐭</p>
+      <p class="text-gray-500 text-sm mb-8">viscacha — checks its surroundings carefully, so you don't have to.</p>
+      <div class="flex items-center justify-center gap-6 mb-8">
+        <a href="https://github.com/iamkorun/viscacha" class="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors text-sm">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          Star on GitHub
+        </a>
+        <a href="https://buymeacoffee.com/iamkorun" class="inline-flex items-center gap-2 text-gray-400 hover:text-yellow-400 transition-colors text-sm">
+          <span>☕</span>
+          Buy Me a Coffee
+        </a>
+      </div>
+      <p class="text-gray-600 text-xs">MIT License</p>
+    </div>
+  </footer>
+
+  <script>
+    // Copy to clipboard
+    function copyInstall(btn) {
+      navigator.clipboard.writeText('cargo install viscacha');
+      btn.classList.add('copied');
+      setTimeout(() => btn.classList.remove('copied'), 1500);
+    }
+
+    function copyText(btn, text) {
+      navigator.clipboard.writeText(text);
+      btn.classList.add('copied');
+      setTimeout(() => btn.classList.remove('copied'), 1500);
+    }
+
+    // Tab switching
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.getElementById('tab-' + tab).classList.add('active');
+      event.target.classList.add('active');
+    }
+
+    // Scroll fade-in
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+        }
+      });
+    }, { threshold: 0.1 });
+
+    document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+  </script>
+</body>
+</html>
