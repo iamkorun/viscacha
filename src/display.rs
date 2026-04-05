@@ -45,8 +45,8 @@ pub fn print_table(results: &[CheckResult], show_fix: bool) {
 
     // Header
     println!(
-        " {:<tool_width$}  {:<required_width$}  {:<installed_width$}  {:<source_width$}  {}",
-        "Tool", "Required", "Installed", "Source", "Status",
+        " {:<tool_width$}  {:<required_width$}  {:<installed_width$}  {:<source_width$}  Status",
+        "Tool", "Required", "Installed", "Source",
     );
     let total_width = tool_width + required_width + installed_width + source_width + 16;
     println!(" {}", "─".repeat(total_width));
