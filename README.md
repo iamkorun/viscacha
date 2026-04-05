@@ -8,7 +8,7 @@
   <a href="https://crates.io/crates/viscacha"><img src="https://img.shields.io/crates/v/viscacha.svg" alt="crates.io"></a>
   <a href="https://github.com/iamkorun/viscacha/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
   <a href="https://github.com/iamkorun/viscacha/stargazers"><img src="https://img.shields.io/github/stars/iamkorun/viscacha?style=social" alt="GitHub Stars"></a>
-  <a href="https://buymeacoffee.com/iamkorun"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=flat&logo=buy-me-a-coffee&logoColor=black" alt="Buy Me a Coffee"></a>
+  <a href="https://buymeacoffee.com/iamkorun"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?logo=buy-me-a-coffee&logoColor=black" alt="Buy Me a Coffee"></a>
 </p>
 
 ---
@@ -237,9 +237,5 @@ Contributions are welcome! Please:
 ---
 
 <p align="center">
-  <a href="https://buymeacoffee.com/iamkorun"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=☕&slug=iamkorun&button_colour=FFDD00&font_colour=000000&font_family=Inter&outline_colour=000000&coffee_colour=ffffff" alt="Buy Me a Coffee"></a>
-</p>
-
-<p align="center">
-  <sub>viscacha — a social, mountain-dwelling rodent that checks its surroundings carefully. Just like this tool checks yours.</sub>
+  <a href="https://buymeacoffee.com/iamkorun"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee" width="200"></a>
 </p>
