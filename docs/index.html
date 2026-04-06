@@ -7,18 +7,19 @@
   <meta name="description" content="Check your toolchain versions match what the project expects. One command to verify Node, Python, Rust, Go, and npm versions across ecosystems.">
   <meta name="keywords" content="toolchain, version checker, CLI, Rust, Node.js, Python, Go, developer tools">
 
-  <!-- Open Graph -->
+  <!-- SVG favicon: a small purple chinchilla glyph -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%90%AD%3C/text%3E%3C/svg%3E">
+
+  <!-- Open Graph (image is an emoji rendered server-side by GitHub Pages CDN OG fallback) -->
   <meta property="og:type" content="website">
   <meta property="og:title" content="viscacha — Toolchain version checker">
-  <meta property="og:description" content="One command to verify your toolchain versions match what the project expects.">
+  <meta property="og:description" content="One command to verify your toolchain versions match what the project expects. Node, Python, Rust, Go, and npm in one pass.">
   <meta property="og:url" content="https://iamkorun.github.io/viscacha">
-  <meta property="og:image" content="https://iamkorun.github.io/viscacha/og-image.png">
 
   <!-- Twitter Card -->
-  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="viscacha — Toolchain version checker">
-  <meta name="twitter:description" content="One command to verify your toolchain versions match what the project expects.">
-  <meta name="twitter:image" content="https://iamkorun.github.io/viscacha/og-image.png">
+  <meta name="twitter:description" content="One command to verify your toolchain versions match what the project expects. Node, Python, Rust, Go, and npm in one pass.">
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -182,20 +183,22 @@
           <div class="terminal-dot bg-green-500/80"></div>
           <span class="ml-2 text-xs text-gray-500 font-mono">~/my-project</span>
         </div>
-        <div class="p-6 font-mono text-sm leading-relaxed">
+        <div class="p-6 font-mono text-sm leading-relaxed overflow-x-auto">
           <p class="text-gray-500">$ viscacha --fix</p>
           <br>
-          <p class="text-gray-400"> Tool    Required  Installed  Source               Status</p>
-          <p class="text-gray-600"> ──────────────────────────────────────────────────────────</p>
-          <p class="text-pass"> node    20        20.11.0    .nvmrc               &#10003;</p>
-          <p class="text-pass"> python  3.11      3.11.4     .python-version      &#10003;</p>
-          <p class="text-fail"> rust    1.76.0    1.80.0     rust-toolchain.toml  &#10007;</p>
-          <p class="text-pass"> go      1.22.0    1.22.0     go.mod               &#10003;</p>
-          <p class="text-pass"> node    >=18      20.11.0    package.json         &#10003;</p>
-          <p class="text-pass"> npm     >=9       10.2.4     package.json         &#10003;</p>
+          <p class="text-gray-400 whitespace-pre"> Tool    Required  Installed  Source               Status</p>
+          <p class="text-gray-600 whitespace-pre"> ─────────────────────────────────────────────────────────</p>
+          <p class="text-pass whitespace-pre"> node    20        20.11.0    .nvmrc               &#10003;</p>
+          <p class="text-pass whitespace-pre"> python  3.11      3.11.4     .python-version      &#10003;</p>
+          <p class="text-fail whitespace-pre"> rust    1.76.0    1.80.0     rust-toolchain.toml  &#10007;</p>
+          <p class="text-pass whitespace-pre"> go      1.22.0    1.22.0     go.mod               &#10003;</p>
+          <p class="text-pass whitespace-pre"> node    &gt;=18      20.11.0    package.json         &#10003;</p>
+          <p class="text-pass whitespace-pre"> npm     &gt;=9       10.2.4     package.json         &#10003;</p>
+          <br>
+          <p class="text-fail font-bold">5 passing, 1 failing</p>
           <br>
           <p class="text-white font-medium">Suggested fixes:</p>
-          <p class="text-gray-400">  <span class="text-white font-medium">rust:</span> <span class="text-cyan-400">rustup toolchain install 1.76.0 && rustup override set 1.76.0</span></p>
+          <p class="text-gray-400">  <span class="text-white font-medium">rust:</span> <span class="text-cyan-400">rustup toolchain install 1.76.0 &amp;&amp; rustup override set 1.76.0</span></p>
         </div>
       </div>
     </div>
@@ -266,9 +269,9 @@
       <h2 class="text-3xl font-bold text-white text-center mb-12">Install</h2>
 
       <div class="flex justify-center gap-1 mb-8">
-        <button onclick="switchTab('cargo')" class="tab-btn active px-5 py-2 text-sm text-gray-400 rounded-t-lg">cargo</button>
-        <button onclick="switchTab('source')" class="tab-btn px-5 py-2 text-sm text-gray-400 rounded-t-lg">from source</button>
-        <button onclick="switchTab('binary')" class="tab-btn px-5 py-2 text-sm text-gray-400 rounded-t-lg">binary</button>
+        <button onclick="switchTab('cargo', this)" class="tab-btn active px-5 py-2 text-sm text-gray-400 rounded-t-lg">cargo</button>
+        <button onclick="switchTab('source', this)" class="tab-btn px-5 py-2 text-sm text-gray-400 rounded-t-lg">from source</button>
+        <button onclick="switchTab('binary', this)" class="tab-btn px-5 py-2 text-sm text-gray-400 rounded-t-lg">binary</button>
       </div>
 
       <div id="tab-cargo" class="tab-content active">
@@ -345,11 +348,11 @@
     }
 
     // Tab switching
-    function switchTab(tab) {
+    function switchTab(tab, btn) {
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
       document.getElementById('tab-' + tab).classList.add('active');
-      event.target.classList.add('active');
+      btn.classList.add('active');
     }
 
     // Scroll fade-in
