@@ -236,6 +236,14 @@ Contributions are welcome! Please:
 
 ---
 
+## Star History
+
+<a href="https://star-history.com/#iamkorun/viscacha&Date">
+  <img src="https://api.star-history.com/svg?repos=iamkorun/viscacha&type=Date" alt="Star History Chart" width="600">
+</a>
+
+---
+
 <p align="center">
   <a href="https://buymeacoffee.com/iamkorun"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee" width="200"></a>
 </p>
