@@ -34,9 +34,16 @@ pub fn parse_version_file(path: &Path) -> Vec<VersionRequirement> {
     }
 }
 
+/// True if `s` looks like a numeric version (starts with a digit).
+/// We use this to skip aliases like `lts/iron`, `system`, `stable`, `nightly`,
+/// or asdf path/ref forms — viscacha can't compare those against an installed version.
+fn is_numeric_version(s: &str) -> bool {
+    s.chars().next().is_some_and(|c| c.is_ascii_digit())
+}
+
 fn parse_simple_version(content: &str, tool: &str, source: &str) -> Vec<VersionRequirement> {
     let trimmed = content.trim().trim_start_matches('v');
-    if trimmed.is_empty() {
+    if trimmed.is_empty() || !is_numeric_version(trimmed) {
         return vec![];
     }
     vec![VersionRequirement {
@@ -57,7 +64,8 @@ fn parse_tool_versions(content: &str) -> Vec<VersionRequirement> {
             let mut parts = line.splitn(2, char::is_whitespace);
             let tool_name = parts.next()?.trim();
             let version = parts.next()?.trim().trim_start_matches('v');
-            if version.is_empty() {
+            // Skip empty values, asdf placeholders ("system"), and ref/path forms.
+            if version.is_empty() || !is_numeric_version(version) {
                 return None;
             }
             let mapped_tool = match tool_name {
@@ -87,26 +95,26 @@ fn parse_rust_toolchain_toml(content: &str) -> Vec<VersionRequirement> {
         .and_then(|t| t.get("channel"))
         .and_then(|c| c.as_str());
 
+    // Skip channel aliases like "stable" / "beta" / "nightly" — they're
+    // not numeric versions and we can't meaningfully compare them.
     match channel {
-        Some(ch) => vec![VersionRequirement {
+        Some(ch) if is_numeric_version(ch) => vec![VersionRequirement {
             tool: "rust".to_string(),
             required: ch.to_string(),
             source: "rust-toolchain.toml".to_string(),
         }],
-        None => vec![],
+        _ => vec![],
     }
 }
 
 fn parse_go_mod(content: &str) -> Vec<VersionRequirement> {
     for line in content.lines() {
-        let trimmed = line.trim();
-        if trimmed.starts_with("go ") {
-            let version = trimmed
-                .strip_prefix("go ")
-                .unwrap_or("")
-                .trim()
-                .trim_start_matches('v');
-            if !version.is_empty() {
+        // Strip end-of-line `// comment` first.
+        let line_no_comment = line.split("//").next().unwrap_or(line);
+        let trimmed = line_no_comment.trim();
+        if let Some(rest) = trimmed.strip_prefix("go ") {
+            let version = rest.trim().trim_start_matches('v');
+            if !version.is_empty() && is_numeric_version(version) {
                 return vec![VersionRequirement {
                     tool: "go".to_string(),
                     required: version.to_string(),

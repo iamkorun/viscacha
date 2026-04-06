@@ -48,7 +48,8 @@ pub fn print_table(results: &[CheckResult], show_fix: bool) {
         " {:<tool_width$}  {:<required_width$}  {:<installed_width$}  {:<source_width$}  Status",
         "Tool", "Required", "Installed", "Source",
     );
-    let total_width = tool_width + required_width + installed_width + source_width + 16;
+    // Separator length matches the header: 4 columns + 4 two-space gaps + "Status" (6).
+    let total_width = tool_width + required_width + installed_width + source_width + 14;
     println!(" {}", "─".repeat(total_width));
 
     // Rows

@@ -184,13 +184,29 @@ fn version_flag_works() {
 }
 
 #[test]
-fn nonexistent_dir_exits_gracefully() {
+fn nonexistent_dir_errors_with_code_2() {
     viscacha()
         .arg("--dir")
         .arg("/tmp/viscacha-nonexistent-dir-12345")
         .assert()
-        .success()
-        .stdout(predicate::str::contains("No version constraint files found"));
+        .failure()
+        .code(2)
+        .stderr(predicate::str::contains("does not exist"));
+}
+
+#[test]
+fn dir_pointing_at_a_file_errors() {
+    let tmp = TempDir::new().unwrap();
+    let file = tmp.path().join("not-a-dir.txt");
+    fs::write(&file, "hello").unwrap();
+
+    viscacha()
+        .arg("--dir")
+        .arg(&file)
+        .assert()
+        .failure()
+        .code(2)
+        .stderr(predicate::str::contains("not a directory"));
 }
 
 #[test]

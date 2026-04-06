@@ -114,57 +114,87 @@ fn extract_version_from_output(tool: &str, output: &str) -> Option<String> {
 }
 
 /// Check if an installed version satisfies a requirement string.
-fn version_matches(required: &str, installed: &str) -> bool {
-    let req = required.trim();
-    let inst = installed.trim();
+pub fn version_matches(required: &str, installed: &str) -> bool {
+    let normalized = normalize_constraint(required.trim());
+    version_matches_normalized(normalized.trim(), installed.trim())
+}
 
-    // Handle OR ranges first
-    if req.contains("||") {
-        return req.split("||").any(|part| version_matches(part.trim(), inst));
+/// Collapse whitespace immediately after comparison operators so users can
+/// write `">= 18"` and have it parse the same as `">=18"`.
+fn normalize_constraint(req: &str) -> String {
+    let mut out = String::with_capacity(req.len());
+    let mut chars = req.chars().peekable();
+    while let Some(c) = chars.next() {
+        out.push(c);
+        // Pair up two-char operators (>= and <=).
+        if (c == '>' || c == '<') && chars.peek() == Some(&'=') {
+            out.push('=');
+            chars.next();
+        }
+        // After any operator char, eat whitespace before the version.
+        if matches!(c, '>' | '<' | '~' | '^') {
+            while chars.peek().is_some_and(|ch| ch.is_whitespace()) {
+                chars.next();
+            }
+        }
     }
-    // Handle ">=X <Y" style compound ranges (space separated, multiple constraints)
+    out
+}
+
+fn version_matches_normalized(req: &str, inst: &str) -> bool {
+    // Handle OR ranges first.
+    if req.contains("||") {
+        return req
+            .split("||")
+            .any(|part| version_matches_normalized(part.trim(), inst));
+    }
+
+    // Handle compound ranges like ">=18 <22" (space-separated constraints).
     let parts: Vec<&str> = req.split_whitespace().collect();
     if parts.len() > 1 {
-        return parts.iter().all(|p| version_matches(p, inst));
+        return parts.iter().all(|p| version_matches_normalized(p, inst));
     }
 
-    // Handle range operators from package.json engines
-    if req.starts_with(">=") {
-        return match_gte(req.trim_start_matches(">=").trim(), inst);
+    // Single-token constraint: dispatch on operator prefix.
+    if let Some(rest) = req.strip_prefix(">=") {
+        return match_gte(rest, inst);
     }
-    if req.starts_with("<=") {
-        return match_lte(req.trim_start_matches("<=").trim(), inst);
+    if let Some(rest) = req.strip_prefix("<=") {
+        return match_lte(rest, inst);
     }
-    if req.starts_with('>') && !req.starts_with(">=") {
-        return match_gt(req.trim_start_matches('>').trim(), inst);
+    if let Some(rest) = req.strip_prefix('>') {
+        return match_gt(rest, inst);
     }
-    if req.starts_with('<') && !req.starts_with("<=") {
-        return match_lt(req.trim_start_matches('<').trim(), inst);
+    if let Some(rest) = req.strip_prefix('<') {
+        return match_lt(rest, inst);
     }
-    if req.starts_with('~') {
-        return match_tilde(req.trim_start_matches('~').trim(), inst);
+    if let Some(rest) = req.strip_prefix('~') {
+        return match_tilde(rest, inst);
     }
-    if req.starts_with('^') {
-        return match_caret(req.trim_start_matches('^').trim(), inst);
-    }
-
-    // Exact or prefix match
-    if req.ends_with(".x") || req.ends_with(".*") {
-        let prefix = &req[..req.len() - 2];
-        return inst.starts_with(prefix);
+    if let Some(rest) = req.strip_prefix('^') {
+        return match_caret(rest, inst);
     }
 
-    // Simple version: could be major-only ("20"), major.minor ("3.11"), or full ("1.76.0")
+    // Wildcard suffix: "20.x" or "3.*"
+    if let Some(prefix) = req.strip_suffix(".x").or_else(|| req.strip_suffix(".*")) {
+        let needle = format!("{prefix}.");
+        return inst == prefix || inst.starts_with(&needle);
+    }
+
+    // Simple version: prefix match by component.
+    // E.g. "20" matches "20.11.0", "3.11" matches "3.11.4".
     let req_parts = parse_version_parts(req);
     let inst_parts = parse_version_parts(inst);
-
-    // Match only the parts that are specified in the requirement
+    if req_parts.is_empty() {
+        return false;
+    }
     for (r, i) in req_parts.iter().zip(inst_parts.iter()) {
         if r != i {
             return false;
         }
     }
-    true
+    // Required cannot be longer than installed (otherwise installed is missing components).
+    req_parts.len() <= inst_parts.len()
 }
 
 fn parse_version_parts(v: &str) -> Vec<u64> {

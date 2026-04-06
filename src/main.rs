@@ -46,6 +46,17 @@ fn main() {
         std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
     });
 
+    // Validate the target before scanning so users get a clear error
+    // instead of a silent "no files found" message.
+    if !dir.exists() {
+        eprintln!("error: {} does not exist", dir.display());
+        process::exit(2);
+    }
+    if !dir.is_dir() {
+        eprintln!("error: {} is not a directory", dir.display());
+        process::exit(2);
+    }
+
     let verbose = cli.verbose && !cli.quiet;
 
     let files = detector::detect_version_files(&dir);
