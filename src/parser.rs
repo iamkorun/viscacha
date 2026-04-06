@@ -330,4 +330,91 @@ mod tests {
         let reqs = write_and_parse("go.mod", content);
         assert!(reqs.is_empty());
     }
+
+    #[test]
+    fn parse_go_mod_with_inline_comment() {
+        let content = "module example.com/foo\n\ngo 1.22.0 // toolchain pinned\n";
+        let reqs = write_and_parse("go.mod", content);
+        assert_eq!(reqs.len(), 1);
+        assert_eq!(reqs[0].required, "1.22.0");
+    }
+
+    #[test]
+    fn parse_nvmrc_skips_lts_alias() {
+        let reqs = write_and_parse(".nvmrc", "lts/iron\n");
+        assert!(reqs.is_empty(), "lts aliases should be skipped");
+    }
+
+    #[test]
+    fn parse_nvmrc_skips_node_alias() {
+        let reqs = write_and_parse(".nvmrc", "latest\n");
+        assert!(reqs.is_empty());
+    }
+
+    #[test]
+    fn parse_python_version_skips_pyenv_aliases() {
+        // pyenv supports things like "system" and dev tags
+        let reqs = write_and_parse(".python-version", "system\n");
+        assert!(reqs.is_empty());
+    }
+
+    #[test]
+    fn parse_tool_versions_skips_system() {
+        let content = "nodejs system\npython 3.11.4\n";
+        let reqs = write_and_parse(".tool-versions", content);
+        assert_eq!(reqs.len(), 1);
+        assert_eq!(reqs[0].tool, "python");
+    }
+
+    #[test]
+    fn parse_tool_versions_skips_path_form() {
+        let content = "nodejs path:/usr/local/bin/node\nrust 1.76.0\n";
+        let reqs = write_and_parse(".tool-versions", content);
+        assert_eq!(reqs.len(), 1);
+        assert_eq!(reqs[0].tool, "rust");
+    }
+
+    #[test]
+    fn parse_rust_toolchain_toml_skips_stable_channel() {
+        let content = "[toolchain]\nchannel = \"stable\"\n";
+        let reqs = write_and_parse("rust-toolchain.toml", content);
+        assert!(reqs.is_empty(), "stable channel should be skipped");
+    }
+
+    #[test]
+    fn parse_rust_toolchain_toml_skips_nightly_dated() {
+        // Dated nightlies like "nightly-2024-01-15" still aren't comparable
+        let content = "[toolchain]\nchannel = \"nightly-2024-01-15\"\n";
+        let reqs = write_and_parse("rust-toolchain.toml", content);
+        assert!(reqs.is_empty());
+    }
+
+    #[test]
+    fn parse_rust_toolchain_plain_skips_stable() {
+        let reqs = write_and_parse("rust-toolchain", "stable\n");
+        assert!(reqs.is_empty());
+    }
+
+    #[test]
+    fn parse_tool_versions_handles_tab_separator() {
+        let content = "nodejs\t20.11.0\n";
+        let reqs = write_and_parse(".tool-versions", content);
+        assert_eq!(reqs.len(), 1);
+        assert_eq!(reqs[0].required, "20.11.0");
+    }
+
+    #[test]
+    fn parse_package_json_engines_with_compound_range() {
+        let content = r#"{"engines":{"node":">=18 <22"}}"#;
+        let reqs = write_and_parse("package.json", content);
+        assert_eq!(reqs.len(), 1);
+        assert_eq!(reqs[0].required, ">=18 <22");
+    }
+
+    #[test]
+    fn parse_package_json_engines_with_caret() {
+        let content = r#"{"engines":{"node":"^18.0.0"}}"#;
+        let reqs = write_and_parse("package.json", content);
+        assert_eq!(reqs[0].required, "^18.0.0");
+    }
 }

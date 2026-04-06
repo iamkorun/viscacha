@@ -497,4 +497,69 @@ mod tests {
         };
         assert!(r.fix_command().is_none());
     }
+
+    #[test]
+    fn normalize_constraint_collapses_operator_whitespace() {
+        assert_eq!(normalize_constraint(">= 18"), ">=18");
+        assert_eq!(normalize_constraint("<= 20"), "<=20");
+        assert_eq!(normalize_constraint("> 18"), ">18");
+        assert_eq!(normalize_constraint("< 20"), "<20");
+        assert_eq!(normalize_constraint("~ 1.2.3"), "~1.2.3");
+        assert_eq!(normalize_constraint("^ 1.2.3"), "^1.2.3");
+        assert_eq!(normalize_constraint(">=18"), ">=18");
+        assert_eq!(normalize_constraint("1.76.0"), "1.76.0");
+    }
+
+    #[test]
+    fn normalize_preserves_compound_ranges() {
+        assert_eq!(normalize_constraint(">= 18 < 22"), ">=18 <22");
+        assert_eq!(normalize_constraint(">=18 <22"), ">=18 <22");
+    }
+
+    #[test]
+    fn version_matches_operator_with_space() {
+        // Regression: ">= 18" used to silently fail.
+        assert!(version_matches(">= 18", "20.0.0"));
+        assert!(version_matches("> 18", "20.0.0"));
+        assert!(!version_matches("> 18", "18.0.0"));
+        assert!(version_matches("<= 20", "20.0.0"));
+        assert!(version_matches("~ 1.2.3", "1.2.5"));
+        assert!(version_matches("^ 1.2.3", "1.5.0"));
+    }
+
+    #[test]
+    fn version_matches_compound_with_spaces() {
+        // ">= 18 < 22" should behave like ">=18 <22"
+        assert!(version_matches(">= 18 < 22", "20.0.0"));
+        assert!(!version_matches(">= 18 < 22", "22.0.0"));
+        assert!(!version_matches(">= 18 < 22", "16.0.0"));
+    }
+
+    #[test]
+    fn version_matches_x_wildcard_does_not_match_longer_prefix() {
+        // Regression: "20.x" used to also match "200.0.0".
+        assert!(version_matches("20.x", "20.11.0"));
+        assert!(!version_matches("20.x", "200.0.0"));
+        assert!(!version_matches("3.*", "30.0.0"));
+    }
+
+    #[test]
+    fn version_matches_required_longer_than_installed() {
+        // Required has more parts than installed -> should not match.
+        assert!(!version_matches("20.11.5.3", "20.11.5"));
+        assert!(version_matches("20.11.5", "20.11.5"));
+    }
+
+    #[test]
+    fn version_matches_empty_required_returns_false() {
+        // Empty/garbage required should never silently pass.
+        assert!(!version_matches("", "20.0.0"));
+        assert!(!version_matches("   ", "20.0.0"));
+    }
+
+    #[test]
+    fn version_matches_or_with_spaces() {
+        assert!(version_matches(">= 16 || >= 18", "20.0.0"));
+        assert!(!version_matches("14 || 16", "20.0.0"));
+    }
 }

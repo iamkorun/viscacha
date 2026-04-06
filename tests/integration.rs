@@ -263,3 +263,81 @@ fn help_flag_works() {
         .success()
         .stdout(predicate::str::contains("viscacha scans your project"));
 }
+
+#[test]
+fn lts_alias_in_nvmrc_is_skipped() {
+    let tmp = TempDir::new().unwrap();
+    fs::write(tmp.path().join(".nvmrc"), "lts/iron\n").unwrap();
+
+    // No requirement -> no row -> "No version constraint files found"
+    viscacha()
+        .arg("--dir")
+        .arg(tmp.path())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("No version constraint files found"));
+}
+
+#[test]
+fn stable_rust_channel_is_skipped() {
+    let tmp = TempDir::new().unwrap();
+    fs::write(
+        tmp.path().join("rust-toolchain.toml"),
+        "[toolchain]\nchannel = \"stable\"\n",
+    )
+    .unwrap();
+
+    viscacha()
+        .arg("--dir")
+        .arg(tmp.path())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("No version constraint files found"));
+}
+
+#[test]
+fn verbose_flag_lists_detected_files() {
+    let tmp = TempDir::new().unwrap();
+    fs::write(tmp.path().join(".nvmrc"), "999.0.0").unwrap();
+
+    viscacha()
+        .arg("--dir")
+        .arg(tmp.path())
+        .arg("--verbose")
+        .assert()
+        .stderr(predicate::str::contains("found"))
+        .stderr(predicate::str::contains(".nvmrc"));
+}
+
+#[test]
+fn quiet_overrides_verbose() {
+    let tmp = TempDir::new().unwrap();
+    fs::write(tmp.path().join(".nvmrc"), "999.0.0").unwrap();
+
+    // --quiet should suppress all output, even when --verbose is set
+    viscacha()
+        .arg("--dir")
+        .arg(tmp.path())
+        .arg("--verbose")
+        .arg("--quiet")
+        .assert()
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::is_empty());
+}
+
+#[test]
+fn package_json_compound_range_parses() {
+    let tmp = TempDir::new().unwrap();
+    fs::write(
+        tmp.path().join("package.json"),
+        r#"{"engines":{"node":">= 18 < 99"}}"#,
+    )
+    .unwrap();
+
+    viscacha()
+        .arg("--dir")
+        .arg(tmp.path())
+        .assert()
+        .stdout(predicate::str::contains("node"))
+        .stdout(predicate::str::contains(">= 18 < 99"));
+}
