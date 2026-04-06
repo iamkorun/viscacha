@@ -26,12 +26,14 @@ You clone a repo. You run `npm install`. It fails. Why? The project needs Node 2
 ```
 $ viscacha
 
- Tool    Required  Installed  Source              Status
- ────────────────────────────────────────────────────────
- node    20        20.11.0    .nvmrc              ✓
- python  3.11      3.11.4     .python-version     ✓
+ Tool    Required  Installed  Source               Status
+ ─────────────────────────────────────────────────────────
+ node    20        20.11.0    .nvmrc               ✓
+ python  3.11      3.11.4     .python-version      ✓
  rust    1.76.0    1.80.0     rust-toolchain.toml  ✗
- go      1.22.0    1.22.0     go.mod              ✓
+ go      1.22.0    1.22.0     go.mod               ✓
+
+3 passing, 1 failing
 ```
 
 Mismatch? Ask for fix suggestions:
@@ -39,9 +41,11 @@ Mismatch? Ask for fix suggestions:
 ```
 $ viscacha --fix
 
- Tool    Required  Installed  Source              Status
- ────────────────────────────────────────────────────────
- rust    1.76.0    1.80.0     rust-toolchain.toml  ✗
+ Tool  Required  Installed  Source               Status
+ ───────────────────────────────────────────────────────
+ rust  1.76.0    1.80.0     rust-toolchain.toml  ✗
+
+0 passing, 1 failing
 
 Suggested fixes:
   rust: rustup toolchain install 1.76.0 && rustup override set 1.76.0
@@ -120,14 +124,16 @@ Drop a `.nvmrc`, `.python-version`, `rust-toolchain.toml`, and `go.mod` in the s
 ```
 $ viscacha
 
- Tool    Required  Installed      Source              Status
- ───────────────────────────────────────────────────────────
- node    20        20.11.0        .nvmrc              ✓
- python  3.11      3.11.4         .python-version     ✓
- rust    1.76.0    1.76.0         rust-toolchain.toml  ✓
- go      1.22.0    1.22.0         go.mod              ✓
- node    >=18      20.11.0        package.json        ✓
- npm     >=9       10.2.4         package.json        ✓
+ Tool    Required  Installed  Source               Status
+ ─────────────────────────────────────────────────────────
+ node    20        20.11.0    .nvmrc               ✓
+ python  3.11      3.11.4     .python-version      ✓
+ rust    1.76.0    1.76.0     rust-toolchain.toml  ✓
+ go      1.22.0    1.22.0     go.mod               ✓
+ node    >=18      20.11.0    package.json         ✓
+ npm     >=9       10.2.4     package.json         ✓
+
+6 passing
 ```
 
 ## Supported Files
@@ -165,7 +171,7 @@ viscacha understands these constraint formats (commonly found in `package.json` 
 |------|---------|
 | `0` | All checks pass (or no version files found) |
 | `1` | One or more version mismatches or tools not installed |
-| `2` | Parse error in a version file |
+| `2` | Bad input — directory does not exist, parse error, etc. |
 
 ## Flags
 
@@ -177,6 +183,20 @@ viscacha understands these constraint formats (commonly found in `package.json` 
 | `--verbose` | `-v` | Show which version files were detected |
 | `--help` | `-h` | Show help text |
 | `--version` | `-V` | Show version |
+
+`--quiet` and `--verbose` are mutually exclusive — viscacha will tell you instead of silently picking one.
+
+Set the `NO_COLOR` environment variable to disable colored output.
+
+## Limitations
+
+viscacha checks **comparable numeric versions**. It deliberately skips entries that aren't pinned to a specific version, because there's nothing meaningful to compare:
+
+- `.nvmrc` aliases like `lts/iron`, `latest`
+- `.tool-versions` placeholders like `system`, `path:/...`, `ref:branch`
+- `rust-toolchain.toml` channels like `stable`, `beta`, `nightly`
+
+If your only version file uses one of these, viscacha will report "no version constraint files found" — that's intentional.
 
 ## CI Integration
 
