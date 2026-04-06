@@ -54,19 +54,13 @@ pub fn print_table(results: &[CheckResult], show_fix: bool) {
 
     // Rows
     for result in results {
-        let installed_str = result
-            .installed
-            .as_deref()
-            .unwrap_or("not installed");
+        let installed_str = result.installed.as_deref().unwrap_or("not installed");
 
         let (status_icon, status_color) = match &result.status {
             CheckStatus::Pass => ("✓", "green"),
             CheckStatus::Fail => ("✗", "red"),
             CheckStatus::NotInstalled => ("✗", "red"),
-            CheckStatus::ParseError(msg) => {
-                eprintln!("  parse error for {}: {}", result.tool, msg);
-                ("?", "yellow")
-            }
+            CheckStatus::ParseError(_) => ("?", "yellow"),
         };
 
         let line = format!(
@@ -79,6 +73,39 @@ pub fn print_table(results: &[CheckResult], show_fix: bool) {
             "red" => println!("{}", line.red()),
             "yellow" => println!("{}", line.yellow()),
             _ => println!("{}", line),
+        }
+    }
+
+    // Summary line
+    let pass_count = results.iter().filter(|r| r.status == CheckStatus::Pass).count();
+    let fail_count = results
+        .iter()
+        .filter(|r| matches!(r.status, CheckStatus::Fail | CheckStatus::NotInstalled))
+        .count();
+    println!();
+    if fail_count == 0 {
+        println!("{}", format!("{pass_count} passing").green().bold());
+    } else {
+        println!(
+            "{}",
+            format!("{pass_count} passing, {fail_count} failing")
+                .red()
+                .bold()
+        );
+    }
+
+    // Parse errors (printed after the table so they don't interleave with rows).
+    let parse_errors: Vec<_> = results
+        .iter()
+        .filter_map(|r| match &r.status {
+            CheckStatus::ParseError(msg) => Some((r.tool.as_str(), msg.as_str())),
+            _ => None,
+        })
+        .collect();
+    if !parse_errors.is_empty() {
+        eprintln!();
+        for (tool, msg) in parse_errors {
+            eprintln!("{} parse error for {tool}: {msg}", "warning:".yellow().bold());
         }
     }
 

@@ -310,19 +310,19 @@ fn verbose_flag_lists_detected_files() {
 }
 
 #[test]
-fn quiet_overrides_verbose() {
+fn quiet_and_verbose_are_mutually_exclusive() {
     let tmp = TempDir::new().unwrap();
     fs::write(tmp.path().join(".nvmrc"), "999.0.0").unwrap();
 
-    // --quiet should suppress all output, even when --verbose is set
+    // --quiet and --verbose contradict each other; clap should reject the combo.
     viscacha()
         .arg("--dir")
         .arg(tmp.path())
         .arg("--verbose")
         .arg("--quiet")
         .assert()
-        .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::is_empty());
+        .failure()
+        .stderr(predicate::str::contains("cannot be used with"));
 }
 
 #[test]
