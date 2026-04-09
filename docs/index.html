@@ -1,370 +1,777 @@
 <!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
+<html lang="en" class="dark scroll-smooth">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>viscacha — Toolchain version checker</title>
-  <meta name="description" content="Check your toolchain versions match what the project expects. One command to verify Node, Python, Rust, Go, and npm versions across ecosystems.">
-  <meta name="keywords" content="toolchain, version checker, CLI, Rust, Node.js, Python, Go, developer tools">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark light" />
+  <title>🐭 viscacha — toolchain version checker</title>
+  <meta name="description" content="viscacha reads .nvmrc, rust-toolchain, go.mod, .python-version and 5 more files, checks what is installed, and prints a pass/fail table in one command." />
+  <meta name="keywords" content="viscacha, toolchain, version checker, nvmrc, rust-toolchain, go.mod, cli, rust, developer tools" />
+  <link rel="canonical" href="https://iamkorun.github.io/viscacha/" />
 
-  <!-- SVG favicon: a small purple chinchilla glyph -->
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%90%AD%3C/text%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%90%AD%3C/text%3E%3C/svg%3E" />
 
-  <!-- Open Graph (image is an emoji rendered server-side by GitHub Pages CDN OG fallback) -->
-  <meta property="og:type" content="website">
-  <meta property="og:title" content="viscacha — Toolchain version checker">
-  <meta property="og:description" content="One command to verify your toolchain versions match what the project expects. Node, Python, Rust, Go, and npm in one pass.">
-  <meta property="og:url" content="https://iamkorun.github.io/viscacha">
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="viscacha — toolchain version checker" />
+  <meta property="og:description" content="One command. Every .nvmrc, rust-toolchain, go.mod, and .python-version in your project. Pass/fail table in milliseconds." />
+  <meta property="og:url" content="https://iamkorun.github.io/viscacha/" />
+  <meta property="og:image" content="https://iamkorun.github.io/viscacha/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:site_name" content="viscacha" />
 
-  <!-- Twitter Card -->
-  <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="viscacha — Toolchain version checker">
-  <meta name="twitter:description" content="One command to verify your toolchain versions match what the project expects. Node, Python, Rust, Go, and npm in one pass.">
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="viscacha — toolchain version checker" />
+  <meta name="twitter:description" content="One command. Every version file in your project. Pass/fail table in milliseconds." />
+  <meta name="twitter:image" content="https://iamkorun.github.io/viscacha/og.png" />
 
-  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FOUT-T blocking script: must run before body paint -->
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('forge-theme');
+        var root = document.documentElement;
+        if (t === 'light') {
+          root.classList.remove('dark');
+          root.classList.add('light');
+        } else {
+          root.classList.add('dark');
+          root.classList.remove('light');
+        }
+      } catch (_) {
+        document.documentElement.classList.add('dark');
+      }
+    })();
+  </script>
+
+  <!-- Fonts: Geist + Geist Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind v3.4.16 (pinned) -->
+  <script src="https://cdn.tailwindcss.com/3.4.16"></script>
   <script>
     tailwind.config = {
+      darkMode: 'class',
       theme: {
         extend: {
           fontFamily: {
-            sans: ['Inter', 'system-ui', 'sans-serif'],
-            mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
+            sans: ['Geist', 'system-ui', 'sans-serif'],
+            mono: ['"Geist Mono"', 'ui-monospace', 'monospace'],
           },
           colors: {
-            surface: {
-              900: '#0a0a0f',
-              800: '#12121a',
-              700: '#1a1a25',
-              600: '#252533',
+            ink: {
+              900: '#17140F', // warm charcoal bg
+              800: '#1F1A12', // raised surface
+              700: '#2A2217', // card surface
+              600: '#352B1E', // border
+              500: '#4A3D2C', // muted border
+              400: '#78705A', // muted text (dark)
+              300: '#B5A889', // secondary text (dark)
+              200: '#E8DEC2', // light secondary (dark)
+              100: '#F4ECD8', // primary text (dark)
             },
-            accent: {
-              DEFAULT: '#a78bfa',
-              light: '#c4b5fd',
-              dim: '#7c3aed',
+            cream: {
+              100: '#FFFBF1',
+              200: '#FAF6EC', // main cream bg
+              300: '#F0E8D4',
+              400: '#E4D8B8',
+              500: '#C8B88E',
             },
-            pass: '#4ade80',
-            fail: '#f87171',
-          }
-        }
-      }
-    }
+            honey: {
+              DEFAULT: '#D4A94E',  // warm mustard
+              light: '#E6B75B',
+              dark: '#A8841F',
+              subtle: '#F5E9C3',
+            },
+            sage: '#7A9468',
+            terracotta: '#C8644A',
+          },
+        },
+      },
+    };
   </script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <style>
-    body { background: #0a0a0f; }
 
-    /* Scroll-triggered fade in */
-    .fade-in {
-      opacity: 0;
-      transform: translateY(20px);
-      transition: opacity 0.6s ease, transform 0.6s ease;
+  <style>
+    :root { color-scheme: dark light; }
+
+    html { scroll-behavior: smooth; }
+
+    /* Base backgrounds */
+    html.dark body {
+      background: #17140F;
+      color: #F4ECD8;
     }
-    .fade-in.visible {
-      opacity: 1;
-      transform: translateY(0);
+    html.light body {
+      background: #FAF6EC;
+      color: #1F1A12;
     }
+
+    /* Warm grain texture — dark mode */
+    html.dark body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background-image:
+        radial-gradient(circle at 25% 20%, rgba(212, 169, 78, 0.045) 0, transparent 35%),
+        radial-gradient(circle at 75% 80%, rgba(212, 169, 78, 0.03) 0, transparent 40%);
+    }
+    html.light body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background-image:
+        radial-gradient(circle at 25% 20%, rgba(212, 169, 78, 0.08) 0, transparent 35%),
+        radial-gradient(circle at 75% 80%, rgba(212, 169, 78, 0.05) 0, transparent 40%);
+    }
+
+    /* Subtle noise overlay for warmth */
+    .grain {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+      opacity: 0.018;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' /%3E%3C/svg%3E");
+    }
+    html.light .grain { opacity: 0.04; }
 
     /* Terminal styling */
     .terminal {
-      background: #12121a;
-      border: 1px solid #252533;
-      border-radius: 12px;
+      border-radius: 14px;
       overflow: hidden;
+      box-shadow: 0 25px 60px -20px rgba(0, 0, 0, 0.55), 0 10px 24px -12px rgba(212, 169, 78, 0.12);
     }
+    html.light .terminal {
+      box-shadow: 0 25px 60px -20px rgba(80, 60, 20, 0.2), 0 10px 24px -12px rgba(212, 169, 78, 0.18);
+    }
+
+    html.dark .terminal { background: #1F1A12; border: 1px solid #2A2217; }
+    html.light .terminal { background: #FFFBF1; border: 1px solid #E4D8B8; }
+
     .terminal-bar {
-      background: #1a1a25;
-      padding: 12px 16px;
+      padding: 14px 18px;
       display: flex;
       align-items: center;
       gap: 8px;
+      border-bottom: 1px solid;
     }
-    .terminal-dot {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-    }
+    html.dark .terminal-bar { background: #17140F; border-color: #2A2217; }
+    html.light .terminal-bar { background: #F0E8D4; border-color: #E4D8B8; }
 
-    /* Copy button animation */
-    .copy-btn {
-      transition: all 0.2s ease;
-    }
-    .copy-btn:hover {
-      background: rgba(167, 139, 250, 0.15);
-    }
-    .copy-btn.copied {
-      color: #4ade80;
-    }
+    .dot { width: 11px; height: 11px; border-radius: 999px; }
+    .dot.r { background: #C8644A; }
+    .dot.y { background: #D4A94E; }
+    .dot.g { background: #7A9468; }
 
-    /* Tab styling */
-    .tab-btn {
-      transition: all 0.2s ease;
-      border-bottom: 2px solid transparent;
-    }
-    .tab-btn.active {
-      border-bottom-color: #a78bfa;
-      color: #a78bfa;
-    }
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
+    /* Syntax highlighting — hand-rolled, no runtime */
+    .tok-muted { color: #78705A; }
+    html.light .tok-muted { color: #8A7E66; }
+    .tok-head { color: #B5A889; }
+    html.light .tok-head { color: #5C5040; }
+    .tok-ok { color: #7A9468; }
+    .tok-fail { color: #C8644A; }
+    .tok-cmd { color: #D4A94E; }
+    html.light .tok-cmd { color: #A8841F; }
+    .tok-flag { color: #E6B75B; }
+    html.light .tok-flag { color: #A8841F; }
+    .tok-str { color: #7A9468; }
+    html.light .tok-str { color: #4D6B3E; }
+    .tok-emph { color: #F4ECD8; }
+    html.light .tok-emph { color: #1F1A12; }
 
-    /* Glow effect on hero */
-    .glow {
-      position: absolute;
-      width: 500px;
-      height: 500px;
-      background: radial-gradient(circle, rgba(124, 58, 237, 0.12) 0%, transparent 70%);
+    /* Install pill */
+    .install-pill {
+      transition: transform 0.18s ease, box-shadow 0.22s ease;
+    }
+    .install-pill:active { transform: scale(0.985); }
+    html.dark .install-pill {
+      background: #1F1A12;
+      border: 1px solid #352B1E;
+      box-shadow: 0 1px 0 rgba(244, 236, 216, 0.03) inset, 0 10px 24px -16px rgba(0, 0, 0, 0.55);
+    }
+    html.light .install-pill {
+      background: #FFFBF1;
+      border: 1px solid #E4D8B8;
+      box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 10px 24px -16px rgba(80, 60, 20, 0.18);
+    }
+    html.dark .install-pill:hover { border-color: #4A3D2C; }
+    html.light .install-pill:hover { border-color: #C8B88E; }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%) translateY(12px);
+      opacity: 0;
       pointer-events: none;
+      transition: opacity 0.22s ease, transform 0.22s ease;
+      z-index: 100;
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 500;
+      font-family: 'Geist Mono', ui-monospace, monospace;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    html.dark .toast {
+      background: #D4A94E;
+      color: #17140F;
+      box-shadow: 0 12px 28px -8px rgba(212, 169, 78, 0.35);
+    }
+    html.light .toast {
+      background: #17140F;
+      color: #F5E9C3;
+      box-shadow: 0 12px 28px -8px rgba(23, 20, 15, 0.35);
+    }
+
+    /* Tabs */
+    .tab-btn {
+      transition: color 0.18s ease, background 0.18s ease, border 0.18s ease;
+      border: 1px solid transparent;
+    }
+    html.dark .tab-btn { color: #B5A889; }
+    html.light .tab-btn { color: #5C5040; }
+    html.dark .tab-btn:hover { color: #F4ECD8; }
+    html.light .tab-btn:hover { color: #1F1A12; }
+    .tab-btn.active {
+      color: #D4A94E;
+    }
+    html.dark .tab-btn.active { background: rgba(212, 169, 78, 0.08); border-color: rgba(212, 169, 78, 0.28); }
+    html.light .tab-btn.active { background: rgba(212, 169, 78, 0.16); border-color: rgba(168, 132, 31, 0.4); }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Fade in on scroll */
+    .fade-in { opacity: 0; transform: translateY(18px); transition: opacity 0.55s ease, transform 0.55s ease; }
+    .fade-in.visible { opacity: 1; transform: translateY(0); }
+
+    /* Nav blur */
+    html.dark .nav { background: rgba(23, 20, 15, 0.72); border-bottom: 1px solid rgba(53, 43, 30, 0.6); }
+    html.light .nav { background: rgba(250, 246, 236, 0.78); border-bottom: 1px solid rgba(228, 216, 184, 0.75); }
+
+    /* Section dividers */
+    html.dark .divider { border-top: 1px dashed rgba(120, 112, 90, 0.2); }
+    html.light .divider { border-top: 1px dashed rgba(138, 126, 102, 0.25); }
+
+    /* Card surfaces */
+    html.dark .card { background: rgba(31, 26, 18, 0.6); border: 1px solid rgba(53, 43, 30, 0.7); }
+    html.light .card { background: rgba(255, 251, 241, 0.7); border: 1px solid rgba(228, 216, 184, 0.8); }
+    .card { transition: transform 0.22s ease, border-color 0.22s ease; }
+    .card:hover { transform: translateY(-2px); }
+    html.dark .card:hover { border-color: rgba(212, 169, 78, 0.28); }
+    html.light .card:hover { border-color: rgba(212, 169, 78, 0.5); }
+
+    /* Link hover underline */
+    .linky { text-decoration-color: rgba(212, 169, 78, 0.45); text-underline-offset: 4px; }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      .fade-in { opacity: 1; transform: none; transition: none; }
+      .install-pill:active { transform: none; }
+      .card:hover { transform: none; }
+      html { scroll-behavior: auto; }
+      .toast { transition: none; }
+    }
+
+    /* Marker glyph for feature bullets */
+    .bullet::before {
+      content: '→';
+      color: #D4A94E;
+      font-weight: 600;
+      margin-right: 10px;
+      font-family: 'Geist Mono', ui-monospace, monospace;
     }
   </style>
 </head>
-<body class="font-sans text-gray-300 antialiased">
+
+<body class="font-sans antialiased relative">
+
+  <div class="grain" aria-hidden="true"></div>
 
   <!-- Nav -->
-  <nav class="fixed top-0 w-full z-50 bg-surface-900/80 backdrop-blur-md border-b border-surface-600/50">
+  <nav class="nav fixed top-0 w-full z-40 backdrop-blur-md">
     <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-      <a href="#" class="text-white font-semibold text-lg tracking-tight">viscacha</a>
-      <div class="flex items-center gap-6">
-        <a href="#features" class="text-sm text-gray-400 hover:text-white transition-colors hidden sm:block">Features</a>
-        <a href="#demo" class="text-sm text-gray-400 hover:text-white transition-colors hidden sm:block">Demo</a>
-        <a href="#install" class="text-sm text-gray-400 hover:text-white transition-colors hidden sm:block">Install</a>
-        <a href="https://github.com/iamkorun/viscacha" class="text-sm text-gray-400 hover:text-white transition-colors flex items-center gap-1.5">
-          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
-          GitHub
+      <a href="#top" class="flex items-center gap-2 font-semibold tracking-tight text-ink-100 dark:text-ink-100 [html.light_&]:text-ink-900">
+        <span class="text-xl">🐭</span>
+        <span class="text-lg">viscacha</span>
+      </a>
+      <div class="flex items-center gap-2 sm:gap-4">
+        <a href="#showcase" class="hidden md:inline-block text-sm text-ink-300 dark:text-ink-300 hover:text-honey transition-colors">Showcase</a>
+        <a href="#install" class="hidden md:inline-block text-sm text-ink-300 dark:text-ink-300 hover:text-honey transition-colors">Install</a>
+        <a href="#files" class="hidden md:inline-block text-sm text-ink-300 dark:text-ink-300 hover:text-honey transition-colors">Files</a>
+        <button id="theme-toggle" aria-label="toggle theme" aria-pressed="true" class="w-11 h-11 flex items-center justify-center rounded-full hover:bg-honey/10 transition-colors" title="Toggle theme">
+          <svg id="sun-icon" class="w-5 h-5 text-honey hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path stroke-linecap="round" d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" /></svg>
+          <svg id="moon-icon" class="w-5 h-5 text-honey" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z" /></svg>
+        </button>
+        <a href="https://github.com/iamkorun/viscacha" class="flex items-center gap-1.5 text-sm text-ink-300 dark:text-ink-300 hover:text-honey transition-colors" aria-label="GitHub repository">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" /></svg>
+          <span class="hidden sm:inline">GitHub</span>
         </a>
       </div>
     </div>
   </nav>
 
   <!-- Hero -->
-  <section class="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
-    <div class="glow top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2"></div>
-    <div class="max-w-3xl mx-auto px-6 text-center relative z-10">
-      <div class="text-6xl mb-6">🐭</div>
-      <h1 class="text-4xl sm:text-5xl md:text-6xl font-bold text-white tracking-tight leading-tight mb-6">
-        viscacha
+  <header id="top" class="relative z-10 pt-32 sm:pt-40 pb-20 sm:pb-24 px-6">
+    <div class="max-w-4xl mx-auto text-center">
+      <div class="inline-flex items-center gap-2 font-mono text-xs tracking-[0.18em] uppercase text-honey mb-8">
+        <span class="w-4 h-px bg-honey/50"></span>
+        <span>A rodent that reads version files</span>
+        <span class="w-4 h-px bg-honey/50"></span>
+      </div>
+      <h1 class="text-5xl sm:text-6xl md:text-7xl font-bold tracking-tight leading-[0.95] mb-8">
+        <span class="text-ink-100 dark:text-ink-100 [html.light_&]:text-ink-900">viscacha</span>
       </h1>
-      <p class="text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-        Check your toolchain versions match what the project expects.
-        Node, Python, Rust, Go — one command, one table, zero guessing.
+      <p class="text-lg sm:text-xl md:text-2xl max-w-2xl mx-auto mb-12 leading-relaxed text-ink-300 dark:text-ink-300 [html.light_&]:text-[#5C5040]">
+        Scans every <code class="font-mono text-honey">.nvmrc</code>, <code class="font-mono text-honey">rust-toolchain</code>, <code class="font-mono text-honey">go.mod</code> and <code class="font-mono text-honey">.python-version</code> in your project, then tells you what's actually installed.
       </p>
 
-      <!-- Install command with copy -->
-      <div class="inline-flex items-center bg-surface-800 border border-surface-600 rounded-lg px-5 py-3 gap-3 group">
-        <code class="font-mono text-sm sm:text-base text-accent-light">cargo install viscacha</code>
-        <button onclick="copyInstall(this)" class="copy-btn text-gray-500 hover:text-accent p-1 rounded" title="Copy to clipboard">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+      <!-- Install pill — the anchor -->
+      <div class="flex justify-center mb-6">
+        <button type="button" onclick="copyInstall(this, 'cargo install viscacha')" class="install-pill group inline-flex items-center gap-4 px-6 py-4 sm:px-8 sm:py-5 rounded-full text-left">
+          <span class="font-mono text-xs tracking-widest text-honey/70 uppercase">install</span>
+          <span class="font-mono text-base sm:text-lg md:text-xl font-medium text-ink-100 dark:text-ink-100 [html.light_&]:text-ink-900">
+            cargo install viscacha
+          </span>
+          <svg class="w-5 h-5 text-ink-300 group-hover:text-honey transition-colors" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="9" y="9" width="13" height="13" rx="2" />
+            <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+          </svg>
         </button>
       </div>
 
-      <div class="mt-8 flex items-center justify-center gap-4">
-        <a href="https://github.com/iamkorun/viscacha" class="inline-flex items-center gap-2 bg-accent-dim hover:bg-accent text-white font-medium px-6 py-2.5 rounded-lg transition-colors text-sm">
-          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+      <p class="font-mono text-xs text-ink-400 mb-10">Click the command. It copies.</p>
+
+      <div class="flex items-center justify-center gap-5 text-sm flex-wrap">
+        <a href="#showcase" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-honey hover:bg-honey-light text-ink-900 font-medium transition-colors">
+          See it run
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+        </a>
+        <a href="https://github.com/iamkorun/viscacha" class="inline-flex items-center gap-2 text-ink-300 hover:text-honey underline linky decoration-honey/40 hover:decoration-honey transition-colors">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.39 7.36H22l-6.18 4.49L18.21 21 12 16.5 5.79 21l2.39-7.15L2 9.36h7.61z"/></svg>
           Star on GitHub
         </a>
-        <a href="#demo" class="text-sm text-gray-400 hover:text-white transition-colors underline underline-offset-4">
-          See it in action
-        </a>
       </div>
     </div>
-  </section>
+  </header>
 
-  <!-- Demo -->
-  <section id="demo" class="py-24 px-6">
-    <div class="max-w-4xl mx-auto fade-in">
-      <h2 class="text-3xl font-bold text-white text-center mb-4">One command. Full picture.</h2>
-      <p class="text-gray-400 text-center mb-12 max-w-xl mx-auto">Run <code class="font-mono text-accent bg-surface-700 px-1.5 py-0.5 rounded text-sm">viscacha</code> in any project directory. It finds version files, checks your installed tools, and tells you what matches and what doesn't.</p>
+  <!-- SHOWCASE — the main visual payoff -->
+  <section id="showcase" class="relative z-10 py-20 px-6 scroll-mt-24">
+    <div class="max-w-5xl mx-auto">
+      <div class="text-center mb-12 fade-in">
+        <p class="font-mono text-xs tracking-[0.18em] uppercase text-honey mb-3">Show, don't tell</p>
+        <h2 class="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight mb-4 text-ink-100 dark:text-ink-100 [html.light_&]:text-ink-900">
+          One command. Full picture.
+        </h2>
+        <p class="text-base sm:text-lg text-ink-300 max-w-2xl mx-auto leading-relaxed">
+          Drop into any project and run it. viscacha walks the directory, finds every version file, checks what you have installed, and shows you where things drift.
+        </p>
+      </div>
 
-      <div class="terminal max-w-2xl mx-auto">
+      <!-- Big terminal showcase -->
+      <div class="terminal fade-in">
         <div class="terminal-bar">
-          <div class="terminal-dot bg-red-500/80"></div>
-          <div class="terminal-dot bg-yellow-500/80"></div>
-          <div class="terminal-dot bg-green-500/80"></div>
-          <span class="ml-2 text-xs text-gray-500 font-mono">~/my-project</span>
+          <span class="dot r"></span>
+          <span class="dot y"></span>
+          <span class="dot g"></span>
+          <span class="ml-3 font-mono text-xs text-ink-400">~/work/monorepo</span>
         </div>
-        <div class="p-6 font-mono text-sm leading-relaxed overflow-x-auto">
-          <p class="text-gray-500">$ viscacha --fix</p>
-          <br>
-          <p class="text-gray-400 whitespace-pre"> Tool    Required  Installed  Source               Status</p>
-          <p class="text-gray-600 whitespace-pre"> ─────────────────────────────────────────────────────────</p>
-          <p class="text-pass whitespace-pre"> node    20        20.11.0    .nvmrc               &#10003;</p>
-          <p class="text-pass whitespace-pre"> python  3.11      3.11.4     .python-version      &#10003;</p>
-          <p class="text-fail whitespace-pre"> rust    1.76.0    1.80.0     rust-toolchain.toml  &#10007;</p>
-          <p class="text-pass whitespace-pre"> go      1.22.0    1.22.0     go.mod               &#10003;</p>
-          <p class="text-pass whitespace-pre"> node    &gt;=18      20.11.0    package.json         &#10003;</p>
-          <p class="text-pass whitespace-pre"> npm     &gt;=9       10.2.4     package.json         &#10003;</p>
-          <br>
-          <p class="text-fail font-bold">5 passing, 1 failing</p>
-          <br>
-          <p class="text-white font-medium">Suggested fixes:</p>
-          <p class="text-gray-400">  <span class="text-white font-medium">rust:</span> <span class="text-cyan-400">rustup toolchain install 1.76.0 &amp;&amp; rustup override set 1.76.0</span></p>
+        <div class="p-6 sm:p-8 font-mono text-[13px] sm:text-sm leading-relaxed overflow-x-auto">
+          <div class="whitespace-pre"><span class="tok-muted">$</span> <span class="tok-cmd">viscacha</span></div>
+          <div class="h-3"></div>
+          <div class="whitespace-pre"><span class="tok-head"> Tool    Required  Installed  Source               Status</span></div>
+          <div class="whitespace-pre tok-muted"> ─────────────────────────────────────────────────────────</div>
+          <div class="whitespace-pre"> <span class="tok-emph">node</span>    20        20.11.0    <span class="tok-str">.nvmrc</span>               <span class="tok-ok">✓</span></div>
+          <div class="whitespace-pre"> <span class="tok-emph">python</span>  3.11      3.11.4     <span class="tok-str">.python-version</span>      <span class="tok-ok">✓</span></div>
+          <div class="whitespace-pre"> <span class="tok-emph">rust</span>    1.76.0    1.80.0     <span class="tok-str">rust-toolchain.toml</span>  <span class="tok-fail">✗</span></div>
+          <div class="whitespace-pre"> <span class="tok-emph">go</span>      1.22.0    1.22.0     <span class="tok-str">go.mod</span>               <span class="tok-ok">✓</span></div>
+          <div class="whitespace-pre"> <span class="tok-emph">node</span>    &gt;=18      20.11.0    <span class="tok-str">package.json</span>         <span class="tok-ok">✓</span></div>
+          <div class="whitespace-pre"> <span class="tok-emph">npm</span>     &gt;=9       10.2.4     <span class="tok-str">package.json</span>         <span class="tok-ok">✓</span></div>
+          <div class="h-3"></div>
+          <div class="whitespace-pre"><span class="tok-ok">5 passing</span>, <span class="tok-fail">1 failing</span></div>
+        </div>
+      </div>
+
+      <div class="text-center mt-10 mb-8 fade-in">
+        <p class="text-sm text-ink-400 font-mono">Something drifted? Ask for fixes.</p>
+      </div>
+
+      <!-- Second terminal: --fix -->
+      <div class="terminal fade-in">
+        <div class="terminal-bar">
+          <span class="dot r"></span>
+          <span class="dot y"></span>
+          <span class="dot g"></span>
+          <span class="ml-3 font-mono text-xs text-ink-400">~/work/monorepo</span>
+        </div>
+        <div class="p-6 sm:p-8 font-mono text-[13px] sm:text-sm leading-relaxed overflow-x-auto">
+          <div class="whitespace-pre"><span class="tok-muted">$</span> <span class="tok-cmd">viscacha</span> <span class="tok-flag">--fix</span></div>
+          <div class="h-3"></div>
+          <div class="whitespace-pre"><span class="tok-head"> Tool  Required  Installed  Source               Status</span></div>
+          <div class="whitespace-pre tok-muted"> ───────────────────────────────────────────────────────</div>
+          <div class="whitespace-pre"> <span class="tok-emph">rust</span>  1.76.0    1.80.0     <span class="tok-str">rust-toolchain.toml</span>  <span class="tok-fail">✗</span></div>
+          <div class="h-3"></div>
+          <div class="whitespace-pre"><span class="tok-fail">0 passing</span>, <span class="tok-fail">1 failing</span></div>
+          <div class="h-3"></div>
+          <div class="whitespace-pre tok-emph">Suggested fixes:</div>
+          <div class="whitespace-pre">  <span class="tok-emph">rust:</span> <span class="tok-cmd">rustup toolchain install 1.76.0</span> <span class="tok-muted">&amp;&amp;</span> <span class="tok-cmd">rustup override set 1.76.0</span></div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Features -->
-  <section id="features" class="py-24 px-6 bg-surface-800/30">
-    <div class="max-w-6xl mx-auto">
-      <h2 class="text-3xl font-bold text-white text-center mb-4 fade-in">Features</h2>
-      <p class="text-gray-400 text-center mb-16 max-w-lg mx-auto fade-in">Everything you need to keep your toolchain in sync.</p>
-
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div class="fade-in bg-surface-700/50 border border-surface-600/50 rounded-xl p-6 hover:border-accent-dim/50 transition-colors">
-          <div class="text-2xl mb-3">🔍</div>
-          <h3 class="text-white font-semibold mb-2">Multi-Ecosystem</h3>
-          <p class="text-gray-400 text-sm leading-relaxed">Node.js, Python, Rust, Go, and npm. Reads 8 different version file formats in one scan.</p>
-        </div>
-        <div class="fade-in bg-surface-700/50 border border-surface-600/50 rounded-xl p-6 hover:border-accent-dim/50 transition-colors">
-          <div class="text-2xl mb-3">🔧</div>
-          <h3 class="text-white font-semibold mb-2">Fix Suggestions</h3>
-          <p class="text-gray-400 text-sm leading-relaxed">The <code class="text-accent text-xs">--fix</code> flag prints the exact commands to resolve every mismatch.</p>
-        </div>
-        <div class="fade-in bg-surface-700/50 border border-surface-600/50 rounded-xl p-6 hover:border-accent-dim/50 transition-colors">
-          <div class="text-2xl mb-3">🤖</div>
-          <h3 class="text-white font-semibold mb-2">CI-Ready</h3>
-          <p class="text-gray-400 text-sm leading-relaxed">Quiet mode returns exit codes only. Drop it into GitHub Actions and catch mismatches before builds fail.</p>
-        </div>
-        <div class="fade-in bg-surface-700/50 border border-surface-600/50 rounded-xl p-6 hover:border-accent-dim/50 transition-colors">
-          <div class="text-2xl mb-3">⚡</div>
-          <h3 class="text-white font-semibold mb-2">Fast & Portable</h3>
-          <p class="text-gray-400 text-sm leading-relaxed">Written in Rust. Single binary, no runtime. Scans and checks in milliseconds.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Supported Files -->
-  <section class="py-24 px-6">
-    <div class="max-w-4xl mx-auto fade-in">
-      <h2 class="text-3xl font-bold text-white text-center mb-12">Supported Files</h2>
-      <div class="overflow-x-auto">
-        <table class="w-full text-left text-sm">
-          <thead>
-            <tr class="border-b border-surface-600">
-              <th class="py-3 px-4 text-gray-400 font-medium">File</th>
-              <th class="py-3 px-4 text-gray-400 font-medium">Ecosystem</th>
-              <th class="py-3 px-4 text-gray-400 font-medium">What it reads</th>
-            </tr>
-          </thead>
-          <tbody class="font-mono text-xs sm:text-sm">
-            <tr class="border-b border-surface-700/50"><td class="py-3 px-4 text-accent">.nvmrc</td><td class="py-3 px-4">Node.js</td><td class="py-3 px-4 text-gray-400">Node version</td></tr>
-            <tr class="border-b border-surface-700/50"><td class="py-3 px-4 text-accent">.node-version</td><td class="py-3 px-4">Node.js</td><td class="py-3 px-4 text-gray-400">Node version</td></tr>
-            <tr class="border-b border-surface-700/50"><td class="py-3 px-4 text-accent">.tool-versions</td><td class="py-3 px-4">asdf / mise</td><td class="py-3 px-4 text-gray-400">nodejs, python, rust, golang</td></tr>
-            <tr class="border-b border-surface-700/50"><td class="py-3 px-4 text-accent">rust-toolchain.toml</td><td class="py-3 px-4">Rust</td><td class="py-3 px-4 text-gray-400">[toolchain] channel</td></tr>
-            <tr class="border-b border-surface-700/50"><td class="py-3 px-4 text-accent">rust-toolchain</td><td class="py-3 px-4">Rust</td><td class="py-3 px-4 text-gray-400">Plain version string</td></tr>
-            <tr class="border-b border-surface-700/50"><td class="py-3 px-4 text-accent">.python-version</td><td class="py-3 px-4">Python</td><td class="py-3 px-4 text-gray-400">Python version</td></tr>
-            <tr class="border-b border-surface-700/50"><td class="py-3 px-4 text-accent">go.mod</td><td class="py-3 px-4">Go</td><td class="py-3 px-4 text-gray-400">go directive</td></tr>
-            <tr><td class="py-3 px-4 text-accent">package.json</td><td class="py-3 px-4">Node.js / npm</td><td class="py-3 px-4 text-gray-400">engines.node, engines.npm</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </section>
-
-  <!-- Install -->
-  <section id="install" class="py-24 px-6 bg-surface-800/30">
-    <div class="max-w-3xl mx-auto fade-in">
-      <h2 class="text-3xl font-bold text-white text-center mb-12">Install</h2>
-
-      <div class="flex justify-center gap-1 mb-8">
-        <button onclick="switchTab('cargo', this)" class="tab-btn active px-5 py-2 text-sm text-gray-400 rounded-t-lg">cargo</button>
-        <button onclick="switchTab('source', this)" class="tab-btn px-5 py-2 text-sm text-gray-400 rounded-t-lg">from source</button>
-        <button onclick="switchTab('binary', this)" class="tab-btn px-5 py-2 text-sm text-gray-400 rounded-t-lg">binary</button>
+  <!-- INSTALL -->
+  <section id="install" class="relative z-10 py-20 sm:py-24 px-6 scroll-mt-24">
+    <div class="max-w-3xl mx-auto">
+      <div class="text-center mb-12 fade-in">
+        <p class="font-mono text-xs tracking-[0.18em] uppercase text-honey mb-3">Pick your poison</p>
+        <h2 class="text-3xl sm:text-4xl font-semibold tracking-tight mb-3 text-ink-100 dark:text-ink-100 [html.light_&]:text-ink-900">Install</h2>
+        <p class="text-ink-300">Three ways to get the binary on your PATH.</p>
       </div>
 
-      <div id="tab-cargo" class="tab-content active">
-        <div class="terminal max-w-lg mx-auto">
+      <div class="flex justify-center gap-2 mb-8 fade-in">
+        <button onclick="switchTab('cargo', this)" class="tab-btn active font-mono text-sm px-5 py-2 rounded-full">cargo</button>
+        <button onclick="switchTab('source', this)" class="tab-btn font-mono text-sm px-5 py-2 rounded-full">source</button>
+        <button onclick="switchTab('binary', this)" class="tab-btn font-mono text-sm px-5 py-2 rounded-full">binary</button>
+      </div>
+
+      <div id="tab-cargo" class="tab-panel active fade-in">
+        <div class="terminal">
           <div class="terminal-bar">
-            <div class="terminal-dot bg-red-500/80"></div>
-            <div class="terminal-dot bg-yellow-500/80"></div>
-            <div class="terminal-dot bg-green-500/80"></div>
+            <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
           </div>
-          <div class="p-5 font-mono text-sm flex items-center justify-between">
-            <span><span class="text-gray-500">$</span> cargo install viscacha</span>
-            <button onclick="copyText(this, 'cargo install viscacha')" class="copy-btn text-gray-500 p-1 rounded">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+          <div class="p-6 font-mono text-sm flex items-center justify-between gap-4">
+            <span class="overflow-x-auto"><span class="tok-muted">$</span> <span class="tok-cmd">cargo</span> install viscacha</span>
+            <button onclick="copyInline(this, 'cargo install viscacha')" class="shrink-0 w-9 h-9 flex items-center justify-center rounded-md hover:bg-honey/10 text-ink-400 hover:text-honey transition-colors" aria-label="copy install command">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" /></svg>
             </button>
           </div>
         </div>
+        <p class="mt-3 text-xs text-ink-400 text-center font-mono">Requires a recent stable Rust toolchain.</p>
       </div>
 
-      <div id="tab-source" class="tab-content">
-        <div class="terminal max-w-lg mx-auto">
+      <div id="tab-source" class="tab-panel fade-in">
+        <div class="terminal">
           <div class="terminal-bar">
-            <div class="terminal-dot bg-red-500/80"></div>
-            <div class="terminal-dot bg-yellow-500/80"></div>
-            <div class="terminal-dot bg-green-500/80"></div>
+            <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
           </div>
-          <div class="p-5 font-mono text-sm space-y-1">
-            <p><span class="text-gray-500">$</span> git clone https://github.com/iamkorun/viscacha.git</p>
-            <p><span class="text-gray-500">$</span> cd viscacha</p>
-            <p><span class="text-gray-500">$</span> cargo install --path .</p>
+          <div class="p-6 font-mono text-sm space-y-1.5">
+            <div><span class="tok-muted">$</span> <span class="tok-cmd">git</span> clone https://github.com/iamkorun/viscacha.git</div>
+            <div><span class="tok-muted">$</span> <span class="tok-cmd">cd</span> viscacha</div>
+            <div><span class="tok-muted">$</span> <span class="tok-cmd">cargo</span> install --path .</div>
+          </div>
+        </div>
+        <p class="mt-3 text-xs text-ink-400 text-center font-mono">Builds from main. Takes about as long as a fresh coffee.</p>
+      </div>
+
+      <div id="tab-binary" class="tab-panel fade-in">
+        <div class="card rounded-2xl p-8 text-center">
+          <p class="text-sm text-ink-300 mb-2">Pre-built binaries for Linux, macOS, and Windows live on the</p>
+          <a href="https://github.com/iamkorun/viscacha/releases" class="font-mono text-sm text-honey hover:text-honey-light transition-colors underline linky">GitHub Releases page →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES — zigzag rows -->
+  <section class="relative z-10 py-20 sm:py-24 px-6">
+    <div class="max-w-5xl mx-auto">
+      <div class="text-center mb-16 fade-in">
+        <p class="font-mono text-xs tracking-[0.18em] uppercase text-honey mb-3">What it does</p>
+        <h2 class="text-3xl sm:text-4xl font-semibold tracking-tight text-ink-100 dark:text-ink-100 [html.light_&]:text-ink-900">Four things. Nothing else.</h2>
+      </div>
+
+      <div class="space-y-20 sm:space-y-24">
+        <!-- Row 1: text left, code right -->
+        <div class="grid md:grid-cols-2 gap-10 items-center fade-in">
+          <div>
+            <div class="font-mono text-xs tracking-widest uppercase text-honey mb-3">01 · read</div>
+            <h3 class="text-2xl sm:text-3xl font-semibold mb-4 text-ink-100 dark:text-ink-100 [html.light_&]:text-ink-900">Eight version file formats in one scan.</h3>
+            <p class="text-ink-300 leading-relaxed mb-5">
+              Dig through <code class="font-mono text-honey">.nvmrc</code>, <code class="font-mono text-honey">.node-version</code>, <code class="font-mono text-honey">.tool-versions</code>, <code class="font-mono text-honey">rust-toolchain.toml</code>, <code class="font-mono text-honey">rust-toolchain</code>, <code class="font-mono text-honey">.python-version</code>, <code class="font-mono text-honey">go.mod</code>, and <code class="font-mono text-honey">package.json</code>. If your project uses it, viscacha reads it.
+            </p>
+            <div class="text-sm text-ink-400 font-mono">No config file. No plugin registry. It just walks the directory.</div>
+          </div>
+          <div class="terminal">
+            <div class="terminal-bar">
+              <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+            </div>
+            <div class="p-5 font-mono text-xs sm:text-sm leading-relaxed">
+              <div class="whitespace-pre"><span class="tok-muted">$</span> <span class="tok-cmd">ls</span> .n<span class="tok-muted">*</span> rust-<span class="tok-muted">*</span> <span class="tok-muted">*.</span>mod</div>
+              <div class="whitespace-pre tok-str">.node-version       rust-toolchain.toml</div>
+              <div class="whitespace-pre tok-str">.nvmrc              go.mod</div>
+              <div class="whitespace-pre tok-str">.python-version</div>
+              <div class="h-3"></div>
+              <div class="whitespace-pre"><span class="tok-muted">$</span> <span class="tok-cmd">viscacha</span> <span class="tok-flag">--verbose</span></div>
+              <div class="whitespace-pre tok-muted">found 5 source files</div>
+              <div class="whitespace-pre tok-muted">checking 6 constraints</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 2: code left, text right -->
+        <div class="grid md:grid-cols-2 gap-10 items-center fade-in">
+          <div class="terminal md:order-1 order-2">
+            <div class="terminal-bar">
+              <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+            </div>
+            <div class="p-5 font-mono text-xs sm:text-sm leading-relaxed">
+              <div class="whitespace-pre"><span class="tok-muted">$</span> <span class="tok-cmd">viscacha</span> <span class="tok-flag">--fix</span></div>
+              <div class="h-2"></div>
+              <div class="whitespace-pre tok-emph">Suggested fixes:</div>
+              <div class="whitespace-pre"><span class="tok-emph">  node:</span>   <span class="tok-cmd">nvm install 20</span></div>
+              <div class="whitespace-pre"><span class="tok-emph">  rust:</span>   <span class="tok-cmd">rustup toolchain install 1.76.0</span></div>
+              <div class="whitespace-pre"><span class="tok-emph">  python:</span> <span class="tok-cmd">pyenv install 3.11</span></div>
+            </div>
+          </div>
+          <div class="md:order-2 order-1">
+            <div class="font-mono text-xs tracking-widest uppercase text-honey mb-3">02 · fix</div>
+            <h3 class="text-2xl sm:text-3xl font-semibold mb-4 text-ink-100 dark:text-ink-100 [html.light_&]:text-ink-900">The exact commands to unstick yourself.</h3>
+            <p class="text-ink-300 leading-relaxed mb-5">
+              Pass <code class="font-mono text-honey">--fix</code> and viscacha prints the real shell commands for nvm, rustup, pyenv, or asdf — whichever fits the mismatch. Copy, paste, done.
+            </p>
+            <div class="text-sm text-ink-400 font-mono">No more googling "how to install rust 1.76.0" at 9pm on a Friday.</div>
+          </div>
+        </div>
+
+        <!-- Row 3: text left, code right -->
+        <div class="grid md:grid-cols-2 gap-10 items-center fade-in">
+          <div>
+            <div class="font-mono text-xs tracking-widest uppercase text-honey mb-3">03 · gate</div>
+            <h3 class="text-2xl sm:text-3xl font-semibold mb-4 text-ink-100 dark:text-ink-100 [html.light_&]:text-ink-900">Drop it into CI. Exit codes do the rest.</h3>
+            <p class="text-ink-300 leading-relaxed mb-5">
+              Quiet mode speaks only in exit codes. <code class="font-mono text-honey">0</code> when everything matches, <code class="font-mono text-honey">1</code> when something drifts. Your GitHub Actions step either passes or it doesn't.
+            </p>
+            <div class="text-sm text-ink-400 font-mono">Catch "works on my machine" before the build does.</div>
+          </div>
+          <div class="terminal">
+            <div class="terminal-bar">
+              <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+              <span class="ml-3 font-mono text-xs text-ink-400">.github/workflows/ci.yml</span>
+            </div>
+            <div class="p-5 font-mono text-xs sm:text-sm leading-relaxed">
+              <div class="whitespace-pre tok-emph">jobs:</div>
+              <div class="whitespace-pre">  check-toolchain:</div>
+              <div class="whitespace-pre">    runs-on: <span class="tok-str">ubuntu-latest</span></div>
+              <div class="whitespace-pre">    steps:</div>
+              <div class="whitespace-pre">      <span class="tok-muted">-</span> <span class="tok-cmd">uses:</span> actions/checkout@v4</div>
+              <div class="whitespace-pre">      <span class="tok-muted">-</span> <span class="tok-cmd">run:</span> <span class="tok-str">cargo install viscacha</span></div>
+              <div class="whitespace-pre">      <span class="tok-muted">-</span> <span class="tok-cmd">run:</span> <span class="tok-str">viscacha --quiet</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 4: code left, text right -->
+        <div class="grid md:grid-cols-2 gap-10 items-center fade-in">
+          <div class="terminal md:order-1 order-2">
+            <div class="terminal-bar">
+              <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+            </div>
+            <div class="p-5 font-mono text-xs sm:text-sm leading-relaxed">
+              <div class="whitespace-pre"><span class="tok-muted">$</span> <span class="tok-cmd">time</span> viscacha</div>
+              <div class="whitespace-pre tok-muted">...</div>
+              <div class="h-2"></div>
+              <div class="whitespace-pre tok-emph">real    0m0.043s</div>
+              <div class="whitespace-pre tok-muted">user    0m0.021s</div>
+              <div class="whitespace-pre tok-muted">sys     0m0.018s</div>
+              <div class="h-3"></div>
+              <div class="whitespace-pre"><span class="tok-muted"># single binary, no runtime</span></div>
+              <div class="whitespace-pre"><span class="tok-muted">$</span> <span class="tok-cmd">file</span> $(<span class="tok-cmd">which</span> viscacha)</div>
+              <div class="whitespace-pre tok-str">ELF 64-bit LSB pie executable, x86-64</div>
+            </div>
+          </div>
+          <div class="md:order-2 order-1">
+            <div class="font-mono text-xs tracking-widest uppercase text-honey mb-3">04 · fast</div>
+            <h3 class="text-2xl sm:text-3xl font-semibold mb-4 text-ink-100 dark:text-ink-100 [html.light_&]:text-ink-900">Written in Rust. Done in milliseconds.</h3>
+            <p class="text-ink-300 leading-relaxed mb-5">
+              Single static binary, no Node runtime, no Python interpreter, no JVM spin-up. viscacha finishes faster than <code class="font-mono text-honey">ls</code> on a cold cache.
+            </p>
+            <div class="text-sm text-ink-400 font-mono">Add it to a shell hook. You won't feel it.</div>
           </div>
         </div>
       </div>
+    </div>
+  </section>
 
-      <div id="tab-binary" class="tab-content">
-        <div class="bg-surface-700/50 border border-surface-600/50 rounded-xl p-6 max-w-lg mx-auto text-center">
-          <p class="text-gray-400 text-sm">Pre-built binaries for Linux, macOS, and Windows are available on the</p>
-          <a href="https://github.com/iamkorun/viscacha/releases" class="text-accent hover:text-accent-light transition-colors font-medium">GitHub Releases page</a>
-        </div>
+  <!-- FILE REFERENCE -->
+  <section id="files" class="relative z-10 py-20 sm:py-24 px-6 scroll-mt-24">
+    <div class="max-w-4xl mx-auto">
+      <div class="text-center mb-12 fade-in">
+        <p class="font-mono text-xs tracking-[0.18em] uppercase text-honey mb-3">The receipts</p>
+        <h2 class="text-3xl sm:text-4xl font-semibold tracking-tight mb-3 text-ink-100 dark:text-ink-100 [html.light_&]:text-ink-900">Files viscacha reads</h2>
+        <p class="text-ink-300">Every format the tool understands today.</p>
+      </div>
+
+      <div class="card rounded-2xl p-2 sm:p-4 fade-in overflow-x-auto">
+        <table class="w-full text-left text-sm">
+          <thead>
+            <tr class="border-b divider">
+              <th class="py-3 px-4 font-mono text-xs tracking-widest uppercase text-honey">file</th>
+              <th class="py-3 px-4 font-mono text-xs tracking-widest uppercase text-honey">ecosystem</th>
+              <th class="py-3 px-4 font-mono text-xs tracking-widest uppercase text-honey">what it reads</th>
+            </tr>
+          </thead>
+          <tbody class="font-mono text-xs sm:text-sm">
+            <tr class="border-b divider"><td class="py-3 px-4 tok-emph">.nvmrc</td><td class="py-3 px-4 text-ink-300">Node.js</td><td class="py-3 px-4 text-ink-400">node version</td></tr>
+            <tr class="border-b divider"><td class="py-3 px-4 tok-emph">.node-version</td><td class="py-3 px-4 text-ink-300">Node.js</td><td class="py-3 px-4 text-ink-400">node version</td></tr>
+            <tr class="border-b divider"><td class="py-3 px-4 tok-emph">.tool-versions</td><td class="py-3 px-4 text-ink-300">asdf / mise</td><td class="py-3 px-4 text-ink-400">nodejs, python, rust, golang</td></tr>
+            <tr class="border-b divider"><td class="py-3 px-4 tok-emph">rust-toolchain.toml</td><td class="py-3 px-4 text-ink-300">Rust</td><td class="py-3 px-4 text-ink-400">[toolchain] channel</td></tr>
+            <tr class="border-b divider"><td class="py-3 px-4 tok-emph">rust-toolchain</td><td class="py-3 px-4 text-ink-300">Rust</td><td class="py-3 px-4 text-ink-400">plain version string</td></tr>
+            <tr class="border-b divider"><td class="py-3 px-4 tok-emph">.python-version</td><td class="py-3 px-4 text-ink-300">Python</td><td class="py-3 px-4 text-ink-400">python version</td></tr>
+            <tr class="border-b divider"><td class="py-3 px-4 tok-emph">go.mod</td><td class="py-3 px-4 text-ink-300">Go</td><td class="py-3 px-4 text-ink-400">go directive</td></tr>
+            <tr><td class="py-3 px-4 tok-emph">package.json</td><td class="py-3 px-4 text-ink-300">Node.js / npm</td><td class="py-3 px-4 text-ink-400">engines.node, engines.npm</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="mt-6 text-center text-xs font-mono text-ink-400 fade-in">
+        Missing one? <a href="https://github.com/iamkorun/viscacha/issues/new" class="text-honey hover:text-honey-light underline linky">Open an issue</a> — the rodent is hungry.
+      </p>
+    </div>
+  </section>
+
+  <!-- Closing CTA -->
+  <section class="relative z-10 py-20 sm:py-28 px-6">
+    <div class="max-w-3xl mx-auto text-center">
+      <div class="text-4xl mb-6 fade-in">🐭</div>
+      <h2 class="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight mb-5 text-ink-100 dark:text-ink-100 [html.light_&]:text-ink-900 fade-in">Stop guessing which version you're on.</h2>
+      <p class="text-base sm:text-lg text-ink-300 mb-10 fade-in">Install it. Run it. Keep working.</p>
+      <div class="fade-in flex justify-center">
+        <button type="button" onclick="copyInstall(this, 'cargo install viscacha')" class="install-pill group inline-flex items-center gap-4 px-6 py-4 rounded-full">
+          <span class="font-mono text-xs tracking-widest text-honey/70 uppercase">install</span>
+          <span class="font-mono text-base sm:text-lg font-medium text-ink-100 dark:text-ink-100 [html.light_&]:text-ink-900">cargo install viscacha</span>
+          <svg class="w-5 h-5 text-ink-300 group-hover:text-honey transition-colors" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="9" y="9" width="13" height="13" rx="2" />
+            <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+          </svg>
+        </button>
       </div>
     </div>
   </section>
 
   <!-- Footer -->
-  <footer class="py-16 px-6 border-t border-surface-600/50">
+  <footer class="relative z-10 py-16 px-6 border-t divider">
     <div class="max-w-4xl mx-auto text-center">
-      <p class="text-2xl mb-2">🐭</p>
-      <p class="text-gray-500 text-sm mb-8">viscacha — checks its surroundings carefully, so you don't have to.</p>
-      <div class="flex items-center justify-center gap-6 mb-8">
-        <a href="https://github.com/iamkorun/viscacha" class="inline-flex items-center gap-2 text-gray-400 hover:text-white transition-colors text-sm">
-          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+      <p class="text-3xl mb-3">🐭</p>
+      <p class="font-mono text-sm text-ink-300 mb-10 italic">viscacha — scans its surroundings carefully, so you don't have to.</p>
+
+      <div class="flex items-center justify-center gap-6 mb-10 flex-wrap">
+        <a href="https://github.com/iamkorun/viscacha" class="inline-flex items-center gap-2 text-sm text-ink-300 hover:text-honey transition-colors">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" /></svg>
           Star on GitHub
         </a>
-        <a href="https://buymeacoffee.com/iamkorun" class="inline-flex items-center gap-2 text-gray-400 hover:text-yellow-400 transition-colors text-sm">
-          <span>☕</span>
+        <a href="https://buymeacoffee.com/iamkorun" class="inline-flex items-center gap-2 text-sm text-ink-300 hover:text-honey transition-colors">
+          <span aria-hidden="true">☕</span>
           Buy Me a Coffee
         </a>
+        <a href="https://github.com/iamkorun/viscacha/blob/main/LICENSE" class="inline-flex items-center gap-2 text-sm text-ink-300 hover:text-honey transition-colors">
+          MIT License
+        </a>
       </div>
-      <p class="text-gray-600 text-xs">MIT License</p>
+
+      <p class="font-mono text-[11px] tracking-wide uppercase text-ink-400">Part of the forge — small rodent tools for tired developers.</p>
     </div>
   </footer>
 
+  <div id="toast" class="toast">Copied!</div>
+
   <script>
-    // Copy to clipboard
-    function copyInstall(btn) {
-      navigator.clipboard.writeText('cargo install viscacha');
-      btn.classList.add('copied');
-      setTimeout(() => btn.classList.remove('copied'), 1500);
+    // Theme toggle
+    (function () {
+      var btn = document.getElementById('theme-toggle');
+      var sun = document.getElementById('sun-icon');
+      var moon = document.getElementById('moon-icon');
+      var root = document.documentElement;
+
+      function render() {
+        var isDark = root.classList.contains('dark');
+        btn.setAttribute('aria-pressed', String(isDark));
+        sun.classList.toggle('hidden', !isDark);
+        moon.classList.toggle('hidden', isDark);
+      }
+      render();
+
+      btn.addEventListener('click', function () {
+        var nowDark = !root.classList.contains('dark');
+        if (nowDark) {
+          root.classList.add('dark');
+          root.classList.remove('light');
+          try { localStorage.setItem('forge-theme', 'dark'); } catch (_) {}
+        } else {
+          root.classList.remove('dark');
+          root.classList.add('light');
+          try { localStorage.setItem('forge-theme', 'light'); } catch (_) {}
+        }
+        render();
+      });
+    })();
+
+    // Copy install (big pill)
+    function copyInstall(btn, text) {
+      try {
+        navigator.clipboard.writeText(text);
+        showToast('Copied!');
+      } catch (e) {
+        showToast('Copy failed');
+      }
     }
 
-    function copyText(btn, text) {
-      navigator.clipboard.writeText(text);
-      btn.classList.add('copied');
-      setTimeout(() => btn.classList.remove('copied'), 1500);
+    // Copy small inline
+    function copyInline(btn, text) {
+      try {
+        navigator.clipboard.writeText(text);
+        showToast('Copied!');
+      } catch (e) {
+        showToast('Copy failed');
+      }
     }
 
-    // Tab switching
+    function showToast(msg) {
+      var toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.classList.add('show');
+      clearTimeout(showToast._t);
+      showToast._t = setTimeout(function () {
+        toast.classList.remove('show');
+      }, 1600);
+    }
+
+    // Tabs
     function switchTab(tab, btn) {
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
+      document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
       document.getElementById('tab-' + tab).classList.add('active');
       btn.classList.add('active');
     }
 
     // Scroll fade-in
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('visible');
-        }
-      });
-    }, { threshold: 0.1 });
-
-    document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+    if ('IntersectionObserver' in window) {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            io.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+      document.querySelectorAll('.fade-in').forEach(function (el) { io.observe(el); });
+    } else {
+      document.querySelectorAll('.fade-in').forEach(function (el) { el.classList.add('visible'); });
+    }
   </script>
 </body>
 </html>
